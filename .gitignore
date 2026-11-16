@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vite/
+*.log
+.DS_Store
+Thumbs.db
+content/.cache/
+e2e/report.json
+e2e/catalog-report.json
+screenshots/99-failure.png
+screenshots/59-catalog-failure.png
+release/
+tmp/

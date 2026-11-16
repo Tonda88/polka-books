@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+  <description>
+    <title-info>
+      <book-title>Тестовая FB2</book-title>
+      <author><first-name>Иван</first-name><last-name>Тестов</last-name></author>
+    </title-info>
+  </description>
+  <body>
+    <title><p>Тестовая FB2</p></title>
+    <section>
+      <title><p>Глава первая</p></title>
+      <p>Первый абзац главы. &amp; проверка сущностей.</p>
+      <p>Второй абзац главы.</p>
+      <p>Третий абзац главы.</p>
+      <poem>
+        <title><p>Стихотворение</p></title>
+        <stanza><v>Строка первая</v><v>Строка вторая</v></stanza>
+        <stanza><v>Строка третья</v></stanza>
+      </poem>
+      <section>
+        <title><p>Подглава</p></title>
+        <p>Вложенный абзац подглавы.</p>
+      </section>
+    </section>
+    <section>
+      <title><p>Глава вторая</p></title>
+      <p>Единственный абзац второй главы.</p>
+    </section>
+  </body>
+</FictionBook>

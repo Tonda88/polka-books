@@ -1,0 +1,35 @@
+{
+  "name": "polka-books",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Полка — мобильное PWA для чтения и прослушивания книг офлайн",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc --noEmit && vite build",
+    "preview": "node server/serve.mjs",
+    "preview:lan": "vite preview --host 0.0.0.0 --port 4173",
+    "typecheck": "tsc --noEmit",
+    "library": "node scripts/build-library.mjs",
+    "sync": "python scripts/sync-library.py",
+    "e2e": "node e2e/run.mjs",
+    "test:e2e": "node e2e/run.mjs",
+    "serve": "node server/serve.mjs",
+    "preview:vite": "vite preview --host 127.0.0.1 --port 4173",
+    "catalog": "node e2e/catalog.mjs",
+    "check:sources": "node scripts/check-sources.mjs",
+    "check:formats": "node scripts/check-formats.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "playwright-core": "^1.65.1",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.8"
+  }
+}
