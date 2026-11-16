@@ -17,6 +17,9 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { searchWeb, providerStatus } from './search/providers.mjs';
+import { analyzePage } from './search/analyze.mjs';
+import { probeUrl } from './search/probe.mjs';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const distDir = join(root, 'dist');
@@ -237,6 +240,55 @@ const server = createServer((req, res) => {
   }
 
   const pathname = (req.url ?? '').split('?')[0];
+
+  if (pathname === '/api/search/status') {
+    sendJson(res, 200, { providers: providerStatus() });
+    return;
+  }
+  if (pathname === '/api/search') {
+    void (async () => {
+      const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+      const query = requestUrl.searchParams.get('q') ?? '';
+      const engines = (requestUrl.searchParams.get('engines') ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const limit = Number(requestUrl.searchParams.get('limit') ?? 20);
+      try {
+        const result = await searchWeb(query, { engines, limit: Number.isFinite(limit) ? limit : 20 });
+        sendJson(res, 200, result);
+      } catch (error) {
+        sendJson(res, 502, { error: error instanceof Error ? error.message : 'Поиск не удался' });
+      }
+    })();
+    return;
+  }
+  if (pathname === '/api/analyze') {
+    void (async () => {
+      const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+      const target = requestUrl.searchParams.get('url') ?? '';
+      try {
+        const result = await analyzePage(target);
+        sendJson(res, result.ok ? 200 : 400, result);
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : 'Анализ не удался' });
+      }
+    })();
+    return;
+  }
+  if (pathname === '/api/probe') {
+    void (async () => {
+      const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+      const target = requestUrl.searchParams.get('url') ?? '';
+      try {
+        const result = await probeUrl(target);
+        sendJson(res, 200, result);
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : 'Проверка не удалась' });
+      }
+    })();
+    return;
+  }
   if (pathname === '/api/health') {
     sendJson(res, 200, {
       ok: true,

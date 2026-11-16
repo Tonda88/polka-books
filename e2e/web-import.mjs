@@ -90,7 +90,7 @@ try {
       await page.getByRole('button', { name: 'Пропустить' }).click();
       await page.waitForSelector('.home');
     }
-    await gotoHash('/search', '.search-hero');
+    await gotoHash('/catalogs', '.search-hero');
     await page.getByRole('button', { name: /Поиск в интернете/ }).first().click();
     await page.waitForSelector('.web-search-screen');
     await shot('80-web-search');

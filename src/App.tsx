@@ -13,6 +13,7 @@ import { GoalsScreen } from './screens/Goals';
 import { ProfileScreen } from './screens/Profile';
 import { OnboardingScreen } from './screens/Onboarding';
 import { SearchScreen } from './screens/Search';
+import { InternetSearchScreen } from './screens/InternetSearch';
 import { BookDetailsScreen } from './screens/BookDetails';
 import { MyBooksScreen } from './screens/MyBooks';
 import { DownloadsScreen } from './screens/DownloadsScreen';
@@ -88,7 +89,8 @@ function Shell() {
       book: 'Книга · Полка',
       reader: 'Чтение · Полка',
       player: 'Аудиокнига · Полка',
-      search: 'Поиск книг · Полка',
+      search: 'Поиск книг в интернете · Полка',
+      catalogs: 'Каталоги книг · Полка',
       details: 'Книга · Полка',
       mybooks: 'Мои книги · Полка',
       prefs: 'Вкус и предпочтения · Полка',
@@ -113,6 +115,8 @@ function Shell() {
   const renderScreen = () => {
     switch (route.screen) {
       case 'search':
+        return <InternetSearchScreen />;
+      case 'catalogs':
         return <SearchScreen />;
       case 'details':
         return route.id ? <BookDetailsScreen bookId={route.id} /> : <SearchScreen />;

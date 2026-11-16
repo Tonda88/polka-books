@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-16T20:53:11.668Z",
+  "ranAt": "2026-11-16T21:32:06.768Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -17,7 +17,7 @@
     {
       "name": "Поисковик открыл реальную страницу выдачи",
       "ok": true,
-      "extra": "https://yandex.ru/showcaptcha?cc=1&form-fb-hint=2.1.1a19c916"
+      "extra": "https://yandex.ru/showcaptcha?cc=1&form-fb-hint=2.1.8e7520c6"
     },
     {
       "name": "Метаданные распознаны",

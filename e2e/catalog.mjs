@@ -79,7 +79,7 @@ async function ensureSearchResults(query) {
   const input = page.locator('.search-field input, input[type="search"]').first();
   if ((await input.count()) === 0) {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
   }
@@ -96,7 +96,7 @@ try {
       await page.getByRole('button', { name: 'Пропустить' }).click();
       await page.waitForSelector('.home');
     }
-    await page.locator('.tab-bar__item', { hasText: 'Поиск' }).click();
+    await page.evaluate(() => { location.hash = '/catalogs'; });
     await page.waitForSelector('.search-hero');
     await page.waitForSelector('.catalog-card', { timeout: 60_000 });
     const cards = await page.locator('.catalog-card').count();
@@ -108,7 +108,7 @@ try {
 
   await step('Категории: фильтр по жанру в выдаче', async () => {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     await ensureSearchResults('frankenstein');
@@ -148,7 +148,7 @@ try {
         break;
       }
       await page.evaluate(() => {
-        location.hash = '/search';
+        location.hash = '/catalogs';
       });
       await ensureSearchResults('frankenstein');
     }
@@ -157,7 +157,7 @@ try {
 
   await step('Ключ Google Books опционален и не блокирует приложение', async () => {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     await page.waitForTimeout(800);
@@ -181,7 +181,7 @@ try {
     await shot('53-google-key-saved');
 
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     const searchInput = page.locator('.search-field input, input[type="search"]').first();
@@ -210,7 +210,7 @@ try {
 
   await step('Реальный поиск по нескольким источникам', async () => {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
@@ -233,7 +233,7 @@ try {
 
   await step('Поиск по серии', async () => {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     await page.getByRole('button', { name: 'Серия', exact: true }).click();
@@ -291,7 +291,7 @@ try {
         break;
       }
       await page.evaluate(() => {
-        location.hash = '/search';
+        location.hash = '/catalogs';
       });
       await ensureSearchResults('frankenstein');
     }
@@ -420,7 +420,7 @@ try {
 
   await step('Аудиокниги LibriVox', async () => {
     await page.evaluate(() => {
-      location.hash = '/search';
+      location.hash = '/catalogs';
     });
     await page.waitForSelector('.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
@@ -447,7 +447,7 @@ try {
         break;
       }
       await page.evaluate(() => {
-        location.hash = '/search';
+        location.hash = '/catalogs';
       });
       await ensureSearchResults('pride and prejudice');
     }

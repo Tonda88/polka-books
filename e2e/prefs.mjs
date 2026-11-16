@@ -104,7 +104,7 @@ try {
   });
 
   await step('Поиск книги и оценка 5★ + «Очень понравилась»', async () => {
-    await gotoHash('/search', '.search-hero');
+    await gotoHash('/catalogs', '.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
     await input.fill('frankenstein');
     await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });
@@ -122,7 +122,7 @@ try {
         found = true;
         break;
       }
-      await gotoHash('/search', '.search-hero');
+      await gotoHash('/catalogs', '.search-hero');
       await page.waitForSelector('.catalog-list .catalog-card');
     }
     assert(found, 'Не нашли карточку с виджетом оценки');
@@ -197,7 +197,7 @@ try {
   });
 
   await step('Отрицательная оценка: снижение приоритета и «Забыть»', async () => {
-    await gotoHash('/search', '.search-hero');
+    await gotoHash('/catalogs', '.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
     await input.fill('pride and prejudice');
     await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });

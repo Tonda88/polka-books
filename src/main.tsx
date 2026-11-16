@@ -6,6 +6,7 @@ import './styles-catalog.css';
 import './styles-library.css';
 import './styles-prefs.css';
 import './styles-web.css';
+import './styles-discovery.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Не найден #root');
