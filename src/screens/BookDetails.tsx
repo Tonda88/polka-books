@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { CatalogBook, DownloadFile } from '../catalog/types';
 import { useBookDetails, useDownloadedBook, useDownloadTasks } from '../catalog/hooks';
+import { verifyBookFiles, type VerifiedBook } from '../catalog/availability';
+import { bookLanguageLabel, categoriesOf } from '../catalog/classify';
 import { downloads } from '../downloads/manager';
 import type { DownloadStatus, DownloadTask } from '../downloads/types';
 import { formatMinutes, formatNumber, humanBytes, plural } from '../lib/format';
@@ -151,10 +153,13 @@ export function BookDetailsScreen({ bookId }: { bookId: string }) {
 
 function DetailsHero({ book }: { book: CatalogBook }) {
   const publisher = book.publishers?.[0];
+  const language = bookLanguageLabel(book);
+  const category = categoriesOf(book)[0]?.label;
   const facts = [
     book.year ? String(book.year) : null,
     publisher ?? null,
-    book.languages?.[0] ? book.languages[0].toUpperCase() : null,
+    language ?? null,
+    category ?? null,
   ].filter((item): item is string => Boolean(item));
 
   return (
@@ -217,6 +222,10 @@ function BookDetailsContent({
   const tasks = useDownloadTasks(book.id);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // Результат проверки доступности файлов (HEAD/Range-запросы).
+  const [verified, setVerified] = useState<VerifiedBook | null>(null);
+  const [checkingFiles, setCheckingFiles] = useState(false);
+  const bookView: VerifiedBook = verified ?? { ...book, files: book.files };
 
   const audio = book.audio;
   const canListen = Boolean(audio && audio.tracks.length > 0);
@@ -244,6 +253,25 @@ function BookDetailsContent({
       notify(file ? `Скачиваем ${formatLabel(file.format)}` : 'Загрузка началась');
     } catch {
       notify('Не удалось начать загрузку', 'error');
+    }
+  };
+
+  const handleCheckFiles = async (): Promise<void> => {
+    if (checkingFiles) return;
+    setCheckingFiles(true);
+    try {
+      const result = await verifyBookFiles(book);
+      setVerified(result);
+      const available = result.files.filter((file) => file.available).length;
+      if (result.filesUnavailable) {
+        notify('Файлы источника сейчас недоступны — попробуйте другой формат', 'error');
+      } else {
+        notify(`Проверено: доступно файлов ${available} из ${result.files.length}`, 'success');
+      }
+    } catch {
+      notify('Не удалось проверить файлы', 'error');
+    } finally {
+      setCheckingFiles(false);
     }
   };
 
@@ -350,14 +378,33 @@ function BookDetailsContent({
           <div className="book-section__head">
             <h2>Форматы</h2>
             <span className="muted">
-              {book.files.length > 0
-                ? `${book.files.length} ${plural(book.files.length, 'файл', 'файла', 'файлов')}`
+              {bookView.files.length > 0
+                ? `${bookView.files.length} ${plural(bookView.files.length, 'файл', 'файла', 'файлов')}`
                 : 'нет файлов'}
             </span>
           </div>
-          {book.files.length > 0 ? (
+          {book.files.length > 0 && (
+            <div className="format-check">
+              <button
+                type="button"
+                className="mini-button"
+                onClick={() => void handleCheckFiles()}
+                disabled={checkingFiles}
+              >
+                {checkingFiles ? 'Проверяем…' : 'Проверить файлы'}
+              </button>
+              {verified && !checkingFiles && (
+                <span className={`format-check__state ${verified.filesUnavailable ? 'is-bad' : 'is-ok'}`}>
+                  {verified.filesUnavailable
+                    ? 'Файлы недоступны'
+                    : `Доступно: ${verified.files.filter((file) => file.available).length} из ${verified.files.length}`}
+                </span>
+              )}
+            </div>
+          )}
+          {bookView.files.length > 0 ? (
             <ul className="format-list">
-              {book.files.map((file, index) => {
+              {bookView.files.map((file, index) => {
                 const saved = downloaded?.format === file.format;
                 return (
                   <li className="format-row" key={`${file.url}-${index}`}>
@@ -367,6 +414,8 @@ function BookDetailsContent({
                       <span className="format-row__meta">
                         {file.sizeBytes ? humanBytes(file.sizeBytes) : 'размер неизвестен'}
                         {file.requiresAuth ? ' · нужен вход у источника' : ''}
+                        {file.available === true && ' · проверено'}
+                        {file.available === false && ' · недоступно'}
                       </span>
                     </span>
                     {file.requiresAuth ? (
@@ -388,9 +437,10 @@ function BookDetailsContent({
                         type="button"
                         className="mini-button"
                         onClick={() => handleDownload(file)}
-                        disabled={Boolean(activeTask)}
+                        disabled={Boolean(activeTask) || file.available === false}
+                        title={file.available === false ? 'Файл недоступен у источника' : undefined}
                       >
-                        Скачать
+                        {file.available === false ? 'Недоступно' : 'Скачать'}
                       </button>
                     )}
                   </li>
@@ -404,6 +454,7 @@ function BookDetailsContent({
           )}
           <p className="details-hint">
             Скачиваем только свободные файлы. Если файл требует входа или покупки — откроем официальную страницу источника.
+            Кнопка «Проверить файлы» заранее узнаёт у источника размер и доступность — без скачивания.
           </p>
         </section>
 

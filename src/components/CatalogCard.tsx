@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { BookFormat, CatalogBook } from '../catalog/types';
 import { useDownloadedBook } from '../catalog/hooks';
+import { bookLanguageLabel, primaryCategory } from '../catalog/classify';
 import { shortText } from '../lib/format';
 import { openCatalogBook } from '../lib/router';
 import { Icon } from './Icons';
@@ -61,6 +62,8 @@ export function CatalogCard({ book, variant = 'row', className = '' }: CatalogCa
   const author = book.authors.length > 0 ? book.authors.slice(0, 2).join(', ') : 'Автор неизвестен';
   const year = book.year ? String(book.year) : '';
   const label = `${book.title}${book.authors.length > 0 ? `, ${book.authors[0]}` : ''}`;
+  const language = bookLanguageLabel(book);
+  const category = primaryCategory(book)?.label;
 
   if (variant === 'tile') {
     return (
@@ -68,6 +71,8 @@ export function CatalogCard({ book, variant = 'row', className = '' }: CatalogCa
         type="button"
         className={`catalog-card catalog-card--tile ${className}`.trim()}
         style={sourceVariables(book.sourceId)}
+        data-book-id={book.id}
+        data-source={book.sourceId}
         onClick={() => openCatalogBook(book.id)}
         aria-label={`Открыть книгу «${label}»`}
       >
@@ -83,7 +88,7 @@ export function CatalogCard({ book, variant = 'row', className = '' }: CatalogCa
         <span className="catalog-card__author">{author}</span>
         <span className="catalog-card__tile-meta">
           {format && <span className="format-badge">{format}</span>}
-          <span className="source-badge">{book.source.sourceName}</span>
+          {language && <span className="meta-badge">{language}</span>}
         </span>
         {downloaded && <span className="downloaded-badge">Скачано</span>}
       </button>
@@ -95,6 +100,8 @@ export function CatalogCard({ book, variant = 'row', className = '' }: CatalogCa
       type="button"
       className={`catalog-card catalog-card--row ${className}`.trim()}
       style={sourceVariables(book.sourceId)}
+      data-book-id={book.id}
+      data-source={book.sourceId}
       onClick={() => openCatalogBook(book.id)}
       aria-label={`Открыть книгу «${label}»`}
     >
@@ -115,6 +122,8 @@ export function CatalogCard({ book, variant = 'row', className = '' }: CatalogCa
         <span className="catalog-card__meta">
           {format && <span className="format-badge">{format}</span>}
           <span className="source-badge">{book.source.sourceName}</span>
+          {language && <span className="meta-badge">{language}</span>}
+          {category && <span className="meta-badge meta-badge--muted">{category}</span>}
           {downloaded && (
             <span className="downloaded-badge">
               <Icon name="check" size={11} />

@@ -9,6 +9,7 @@
  * saleInfo → покупка в Google Play Books.
  */
 import { ApiError, buildUrl, fetchJson } from '../http';
+import { googleBooksProxyUrl, hasServerGoogleKey, isProxyMode } from '../proxy';
 import { cleanText, makeId, normalizeIsbn, toYear, uniqueStrings } from '../normalize';
 import type {
   AccessMode,
@@ -24,7 +25,8 @@ const SOURCE_ID = 'googlebooks';
 const SOURCE_NAME = 'Google Books';
 const API_BASE = 'https://www.googleapis.com/books/v1/';
 const PLAY_BASE = 'https://play.google.com/store/books/details?id=';
-const KEY_HINT = 'Google Books: нужен API-ключ, общая квота исчерпана. Добавьте ключ в Профиле.';
+const KEY_HINT =
+  'Google Books: нужен API-ключ. Добавьте свой ключ в Профиле или настройте GOOGLE_BOOKS_KEY на сервере — остальные источники работают без него.';
 
 /** Лимит записей на запрос: 1..30, по умолчанию 20. */
 function limitOf(ctx: SourceContext): number {
@@ -90,20 +92,52 @@ interface GbVolumesResponse {
 
 // --- запросы ----------------------------------------------------------------
 
-/** Ключ обязателен: без него Google отвечает 429 и результата не будет. */
-function apiKeyOf(ctx: SourceContext): string {
-  if (!ctx.apiKey) throw new ApiError(KEY_HINT, 429, false);
-  return ctx.apiKey;
+/**
+ * Доступен ли Google Books: ключ пользователя ИЛИ серверный прокси
+ * (ключ в переменной окружения сервера, в клиент не попадает).
+ */
+function hasAccess(ctx: SourceContext): boolean {
+  // Режим прокси сам по себе не даёт доступа: нужен ключ — свой у пользователя
+  // или настроенный на сервере. Так Google не мешает, когда ключа нет вовсе.
+  return Boolean(ctx.apiKey) || hasServerGoogleKey();
 }
 
-/** Запрос к официальному API; 429 без ключа превращаем в понятную ошибку. */
-async function apiGet<T>(path: string, params: Record<string, string | number | undefined>, ctx: SourceContext): Promise<T> {
-  const key = apiKeyOf(ctx);
-  const url = buildUrl(`${API_BASE}${path}`, { ...params, key });
+/** Запрос к официальному API: напрямую с ключом или через серверный прокси. */
+async function apiGet<T>(
+  path: string,
+  params: Record<string, string | number | undefined>,
+  ctx: SourceContext,
+): Promise<T> {
+  if (!hasAccess(ctx)) throw new ApiError(KEY_HINT, 429, false);
+
+  const viaProxy = isProxyMode();
+  const url = viaProxy
+    ? googleBooksProxyUrl(path, params, ctx.apiKey)
+    : buildUrl(`${API_BASE}${path}`, { ...params, key: ctx.apiKey });
+
   try {
-    return await fetchJson<T>(url, { signal: ctx.signal, timeoutMs: 15_000, retries: 0 });
+    return await fetchJson<T>(url, {
+      signal: ctx.signal,
+      timeoutMs: viaProxy ? 25_000 : 15_000,
+      retries: 0,
+    });
   } catch (error) {
-    if (error instanceof ApiError && error.status === 429) throw new ApiError(KEY_HINT, 429, false);
+    if (error instanceof ApiError && error.status === 503) {
+      throw new ApiError(
+        'Google Books: на сервере не настроен ключ. Добавьте GOOGLE_BOOKS_KEY на сервере или свой ключ в Профиле.',
+        503,
+        false,
+      );
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      throw new ApiError(
+        viaProxy
+          ? 'Google Books: квота исчерпана даже с ключом — попробуйте позже'
+          : KEY_HINT,
+        429,
+        false,
+      );
+    }
     if (error instanceof ApiError && (error.status === 400 || error.status === 403)) {
       throw new ApiError(
         `Google Books: ключ API отклонён (${error.status}). Проверьте ключ в Профиле.`,
@@ -268,7 +302,7 @@ export const googleBooksSource: BookSource = {
   id: SOURCE_ID,
   name: SOURCE_NAME,
   homepage: 'https://books.google.com',
-  licenseNote: 'Официальный Google Books API; нужен API-ключ из профиля',
+  licenseNote: 'Официальный Google Books API; ключ необязателен: свой в Профиле или серверный прокси',
   capabilities: {
     search: true,
     byIsbn: true,
@@ -310,10 +344,10 @@ export const googleBooksSource: BookSource = {
   },
 
   async health(ctx: SourceContext): Promise<SourceHealth> {
-    if (!ctx.apiKey) {
+    if (!hasAccess(ctx)) {
       return {
         ok: false,
-        note: 'Нужен API-ключ Google Books: без него квота общая и исчерпана (HTTP 429)',
+        note: 'Нужен API-ключ: добавьте в Профиле или настройте GOOGLE_BOOKS_KEY на сервере',
         checkedAt: Date.now(),
       };
     }
@@ -321,7 +355,7 @@ export const googleBooksSource: BookSource = {
       const response = await apiGet<GbVolumesResponse>('volumes', { q: 'test', maxResults: 1 }, ctx);
       return {
         ok: Boolean(response.items?.length),
-        note: 'Google Books API отвечает',
+        note: isProxyMode() ? 'Google Books API отвечает через серверный прокси' : 'Google Books API отвечает',
         checkedAt: Date.now(),
       };
     } catch (error) {

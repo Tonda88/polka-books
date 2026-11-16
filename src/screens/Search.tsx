@@ -9,6 +9,7 @@ import {
   type CachedSearchState,
 } from '../catalog/hooks';
 import { listSources } from '../catalog/registry';
+import { CATEGORIES, filterByCategory, type CategoryId } from '../catalog/classify';
 import { formatNumber, plural, shortText } from '../lib/format';
 import { getSearchQuery } from '../lib/router';
 import { useAppOptional } from '../lib/store';
@@ -33,16 +34,10 @@ const FIELD_PLACEHOLDERS: Record<SearchField, string> = {
   subject: 'Жанр или тема',
 };
 
-const QUICK_GENRES = [
-  'Классика',
-  'Фантастика',
-  'Детективы',
-  'Поэзия',
-  'История',
-  'Философия',
-  'Психология',
-  'Приключения',
-];
+/** Категории для быстрых подборок: подпись и запрос к источникам. */
+const QUICK_CATEGORIES = CATEGORIES.filter((category) =>
+  ['fiction', 'fantasy', 'mystery', 'poetry', 'history', 'philosophy', 'science', 'children'].includes(category.id),
+);
 
 const QUICK_HINTS = ['Пушкин', 'Толстой', 'Чехов', 'Фантастика', 'Онегин'];
 
@@ -89,6 +84,8 @@ export function SearchScreen() {
   const [field, setField] = useState<SearchField>('all');
   const [text, setText] = useState(() => getSearchQuery());
   const [subject, setSubject] = useState<string | null>(null);
+  // Категория-фильтр для текущей выдачи (клиентская, без нового запроса).
+  const [categoryFilter, setCategoryFilter] = useState<CategoryId | 'all'>('all');
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
 
   const debouncedText = useDebouncedValue(text, 320);
@@ -159,6 +156,11 @@ export function SearchScreen() {
 
   const errors = search.result?.errors ?? [];
   const searchableSources = activeSources.filter((source) => source.capabilities.search).length;
+  const visibleBooks = useMemo(
+    () => (search.result ? search.result.books.filter((book) => filterByCategory(book, categoryFilter)) : []),
+    [search.result, categoryFilter],
+  );
+
   const allFailed = errors.length > 0 && errors.length >= searchableSources && (search.result?.books.length ?? 0) === 0;
 
   return (
@@ -272,6 +274,32 @@ export function SearchScreen() {
             </ul>
           )}
 
+          {search.result && search.result.books.length > 0 && (
+            <div className="chips-row chips-row--wrap category-filter" role="group" aria-label="Категории книг">
+              <button
+                type="button"
+                className={`chip ${categoryFilter === 'all' ? 'is-active' : ''}`}
+                onClick={() => setCategoryFilter('all')}
+                aria-pressed={categoryFilter === 'all'}
+              >
+                Все
+              </button>
+              {CATEGORIES.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`chip ${categoryFilter === category.id ? 'is-active' : ''}`}
+                  onClick={() =>
+                    setCategoryFilter(categoryFilter === category.id ? 'all' : category.id)
+                  }
+                  aria-pressed={categoryFilter === category.id}
+                >
+                  {category.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="search-status" role="status" aria-live="polite">
             {search.loading ? (
               <>
@@ -302,6 +330,19 @@ export function SearchScreen() {
             )}
           </div>
 
+          {categoryFilter !== 'all' && (
+            <div className="chips-row chips-row--wrap" role="group" aria-label="Фильтр по категории">
+              <button
+                type="button"
+                className="chip"
+                onClick={() => setCategoryFilter('all')}
+              >
+                Все категории
+              </button>
+              <span className="chip is-active">{CATEGORIES.find((item) => item.id === categoryFilter)?.label}</span>
+            </div>
+          )}
+
           {search.offline && (
             <div className="search-offline">
               <Icon name="wifiOff" size={16} />
@@ -319,9 +360,17 @@ export function SearchScreen() {
             />
           ) : search.loading && !search.result ? (
             <ResultSkeleton count={5} />
+          ) : search.result && search.result.books.length > 0 && visibleBooks.length === 0 ? (
+            <SearchEmpty
+              icon="search"
+              title="В этой категории ничего нет"
+              text="Среди найденных книг нет книг выбранной категории. Покажите все результаты."
+              actionLabel="Показать все"
+              onAction={() => setCategoryFilter('all')}
+            />
           ) : search.result && search.result.books.length > 0 ? (
             <div className="catalog-list">
-              {search.result.books.map((book) => (
+              {visibleBooks.map((book) => (
                 <CatalogCard key={book.id} book={book} />
               ))}
             </div>
@@ -385,15 +434,15 @@ export function SearchScreen() {
               )}
             </div>
             <div className="chips-row chips-row--wrap">
-              {QUICK_GENRES.map((item) => (
+              {QUICK_CATEGORIES.map((category) => (
                 <button
-                  key={item}
+                  key={category.id}
                   type="button"
-                  className={`chip ${subject === item ? 'is-active' : ''}`}
-                  onClick={() => setSubject(subject === item ? null : item)}
-                  aria-pressed={subject === item}
+                  className={`chip ${subject === category.query ? 'is-active' : ''}`}
+                  onClick={() => setSubject(subject === category.query ? null : category.query)}
+                  aria-pressed={subject === category.query}
                 >
-                  {item}
+                  {category.label}
                 </button>
               ))}
             </div>
@@ -401,7 +450,9 @@ export function SearchScreen() {
             {subject && (
               <div className="search-genre">
                 <div className="search-genre__head">
-                  <h3 className="section__title search-genre__title">{subject}</h3>
+                  <h3 className="section__title search-genre__title">
+                    {CATEGORIES.find((item) => item.query === subject)?.label ?? subject}
+                  </h3>
                   <span className="muted">
                     {genre.result
                       ? `${formatNumber(genre.result.books.length)} ${plural(

@@ -90,7 +90,7 @@ if ($LASTEXITCODE -ne 0) { throw "aapt2 compile failed" }
 Write-Host "[4/7] aapt2 link"
 & $aapt2 link -o "$build\base.apk" -I $androidJar --manifest "$work\AndroidManifest.xml" `
   "$build\res.zip" --java "$build\gen" --min-sdk-version 24 --target-sdk-version 34 `
-  --version-code 1 --version-name "1.0.0" --auto-add-overlay
+  --version-code 2 --version-name "1.1.0" --auto-add-overlay
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 # Приложение целиком внутрь APK: assets/www
@@ -139,16 +139,16 @@ if (-not (Test-Path $ks)) {
   if ($LASTEXITCODE -ne 0) { throw "keytool failed" }
 }
 & $apksigner sign --ks $ks --ks-pass pass:polka2026 --key-pass pass:polka2026 `
-  --out "$build\Polka-1.0.0.apk" "$build\aligned.apk"
+  --out "$build\Polka-1.1.0.apk" "$build\aligned.apk"
 if ($LASTEXITCODE -ne 0) { throw "apksigner failed" }
-& $apksigner verify "$build\Polka-1.0.0.apk"
+& $apksigner verify "$build\Polka-1.1.0.apk"
 if ($LASTEXITCODE -ne 0) { throw "подпись не прошла проверку" }
 
 # Копируем готовый APK обратно в проект
 $outDir = Join-Path $proj "release"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-Copy-Item "$build\Polka-1.0.0.apk" (Join-Path $outDir "Polka-1.0.0.apk") -Force
+Copy-Item "$build\Polka-1.1.0.apk" (Join-Path $outDir "Polka-1.1.0.apk") -Force
 
-$size = [math]::Round((Get-Item "$build\Polka-1.0.0.apk").Length / 1MB, 2)
-Write-Host "`nГотово: $outDir\Polka-1.0.0.apk ($size МБ)"
-Write-Host "Проверка: $(& $aapt2 dump badging "$build\Polka-1.0.0.apk" | Select-Object -First 3)"
+$size = [math]::Round((Get-Item "$build\Polka-1.1.0.apk").Length / 1MB, 2)
+Write-Host "`nГотово: $outDir\Polka-1.1.0.apk ($size МБ)"
+Write-Host "Проверка: $(& $aapt2 dump badging "$build\Polka-1.1.0.apk" | Select-Object -First 3)"

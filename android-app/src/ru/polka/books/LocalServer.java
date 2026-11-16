@@ -16,6 +16,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
@@ -123,13 +124,17 @@ public class LocalServer {
             return;
         }
         if (path.startsWith("/api/health")) {
-            byte[] body = "{\"ok\":true,\"proxy\":true,\"native\":true}".getBytes(StandardCharsets.UTF_8);
+            byte[] body = "{\"ok\":true,\"proxy\":true,\"native\":true,\"googleBooks\":false}".getBytes(StandardCharsets.UTF_8);
             writeHeaders(out, 200, "application/json; charset=utf-8", body.length);
             out.write(body);
             return;
         }
         if (path.startsWith("/api/fetch")) {
             proxy(path, rangeHeader, out);
+            return;
+        }
+        if (path.startsWith("/api/googlebooks")) {
+            proxyGoogleBooks(path, out);
             return;
         }
         serveAsset(path, out);
@@ -173,6 +178,70 @@ public class LocalServer {
         if (lower.endsWith(".woff2")) return "font/woff2";
         if (lower.endsWith(".txt")) return "text/plain; charset=utf-8";
         return "application/octet-stream";
+    }
+
+
+    /**
+     * Прокси Google Books: в APK ключ вводит пользователь в настройках,
+     * он передаётся параметром key и не хранится в коде приложения.
+     * Прокси нужен, чтобы не зависеть от CORS WebView.
+     */
+    private void proxyGoogleBooks(String rawPath, OutputStream out) throws IOException {
+        Map<String, String> params = parseQuery(rawPath);
+        String path = params.remove("path");
+        String key = params.remove("key");
+        if (path == null || !path.matches("[A-Za-z0-9/_-]+")) {
+            sendJsonError(out, 400, "Некорректный путь запроса Google Books");
+            return;
+        }
+        if (key == null || key.isEmpty()) {
+            sendJsonError(out, 503, "Google Books: ключ не задан в настройках приложения");
+            return;
+        }
+
+        StringBuilder query = new StringBuilder();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (query.length() > 0) query.append('&');
+            query.append(URLEncoder.encode(entry.getKey(), "UTF-8"))
+                    .append('=')
+                    .append(URLEncoder.encode(entry.getValue(), "UTF-8"));
+        }
+        query.append("&key=").append(URLEncoder.encode(key, "UTF-8"));
+
+        String target = "https://www.googleapis.com/books/v1/" + path + "?" + query;
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(target).openConnection();
+            connection.setConnectTimeout(15_000);
+            connection.setReadTimeout(25_000);
+            connection.setRequestProperty("Accept", "application/json");
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+            byte[] body = stream != null ? readAll(stream) : new byte[0];
+            writeHeaders(out, status, "application/json; charset=utf-8", body.length);
+            out.write(body);
+            out.flush();
+        } catch (IOException error) {
+            sendJsonError(out, 502, "Google Books недоступен: " + error.getMessage());
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** Разбирает query-строку запроса в карту (без декодирования path). */
+    private static Map<String, String> parseQuery(String rawPath) throws IOException {
+        Map<String, String> result = new HashMap<>();
+        int index = rawPath.indexOf('?');
+        if (index < 0) return result;
+        String query = rawPath.substring(index + 1);
+        for (String pair : query.split("&")) {
+            if (pair.isEmpty()) continue;
+            int eq = pair.indexOf('=');
+            String name = eq >= 0 ? pair.substring(0, eq) : pair;
+            String value = eq >= 0 ? pair.substring(eq + 1) : "";
+            result.put(URLDecoder.decode(name, "UTF-8"), URLDecoder.decode(value, "UTF-8"));
+        }
+        return result;
     }
 
     // ------------------------------------------------------------------- прокси

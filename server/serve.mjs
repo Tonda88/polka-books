@@ -147,6 +147,53 @@ async function proxyFile(req, res) {
   }
 }
 
+/**
+ * Прокси Google Books: ключ хранится в переменной окружения сервера
+ * (GOOGLE_BOOKS_KEY) и никогда не попадает в клиентский код. Если ключа
+ * на сервере нет, используется ключ, переданный пользователем из настроек.
+ */
+async function proxyGoogleBooks(req, res) {
+  const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+  const path = (requestUrl.searchParams.get('path') ?? '').replace(/^\/+/, '');
+  if (!/^[A-Za-z0-9/_-]+$/.test(path)) {
+    sendJson(res, 400, { error: 'Некорректный путь запроса Google Books' });
+    return;
+  }
+
+  const params = new URLSearchParams();
+  for (const [name, value] of requestUrl.searchParams.entries()) {
+    if (name === 'path' || name === 'key') continue;
+    params.set(name, value);
+  }
+  const key = process.env.GOOGLE_BOOKS_KEY || requestUrl.searchParams.get('key') || '';
+  if (!key) {
+    sendJson(res, 503, {
+      error: 'Google Books: на сервере не настроен GOOGLE_BOOKS_KEY, и ключ не передан клиентом',
+    });
+    return;
+  }
+  params.set('key', key);
+
+  const target = `https://www.googleapis.com/books/v1/${path}?${params.toString()}`;
+  try {
+    const upstream = await fetch(target, {
+      signal: AbortSignal.timeout(25_000),
+      headers: { Accept: 'application/json' },
+    });
+    const body = await upstream.text();
+    res.writeHead(upstream.ok ? 200 : upstream.status, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    res.end(body);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+    sendJson(res, 502, { error: `Google Books недоступен: ${message}` });
+  }
+}
+
 function serveStatic(req, res) {
   const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
   let pathname = decodeURIComponent(requestUrl.pathname);
@@ -191,11 +238,21 @@ const server = createServer((req, res) => {
 
   const pathname = (req.url ?? '').split('?')[0];
   if (pathname === '/api/health') {
-    sendJson(res, 200, { ok: true, proxy: true, host: HOST, port: PORT });
+    sendJson(res, 200, {
+      ok: true,
+      proxy: true,
+      googleBooks: Boolean(process.env.GOOGLE_BOOKS_KEY),
+      host: HOST,
+      port: PORT,
+    });
     return;
   }
   if (pathname === '/api/fetch') {
     void proxyFile(req, res);
+    return;
+  }
+  if (pathname === '/api/googlebooks') {
+    void proxyGoogleBooks(req, res);
     return;
   }
   serveStatic(req, res);

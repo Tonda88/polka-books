@@ -23,11 +23,52 @@ export function normalizeAuthor(author: string): string {
     .join(' ');
 }
 
+/** ISBN-10 → ISBN-13 (префикс 978 + контрольная цифра). */
+export function isbn10To13(isbn10: string): string | undefined {
+  const digits = isbn10.replace(/[^0-9Xx]/g, '').toUpperCase();
+  if (digits.length !== 10) return undefined;
+  const body = '978' + digits.slice(0, 9);
+  let sum = 0;
+  for (let index = 0; index < 12; index += 1) {
+    sum += Number(body[index]) * (index % 2 === 0 ? 1 : 3);
+  }
+  const check = (10 - (sum % 10)) % 10;
+  return body + check;
+}
+
+/** ISBN-13 → ISBN-10 (только для префикса 978). */
+export function isbn13To10(isbn13: string): string | undefined {
+  const digits = isbn13.replace(/[^0-9]/g, '');
+  if (digits.length !== 13 || !digits.startsWith('978')) return undefined;
+  const body = digits.slice(3, 12);
+  let sum = 0;
+  for (let index = 0; index < 9; index += 1) {
+    sum += Number(body[index]) * (10 - index);
+  }
+  const check = (11 - (sum % 11)) % 11;
+  return body + (check === 10 ? 'X' : String(check));
+}
+
 export function normalizeIsbn(value: string | undefined | null): string | undefined {
   if (!value) return undefined;
   const digits = value.replace(/[^0-9Xx]/g, '').toUpperCase();
   if (digits.length === 10 || digits.length === 13) return digits;
   return undefined;
+}
+
+/** Все эквивалентные записи ISBN: исходная, ISBN-13 и ISBN-10. */
+export function isbnEquivalents(value: string | undefined | null): string[] {
+  const normalized = normalizeIsbn(value);
+  if (!normalized) return [];
+  const result = new Set<string>([normalized]);
+  if (normalized.length === 10) {
+    const as13 = isbn10To13(normalized);
+    if (as13) result.add(as13);
+  } else {
+    const as10 = isbn13To10(normalized);
+    if (as10) result.add(as10);
+  }
+  return [...result];
 }
 
 export function cleanText(text: string | undefined | null, limit = 2000): string | undefined {
@@ -93,11 +134,10 @@ export function titleSimilarity(a: string, b: string): number {
  * Требуем совпадение названия и автора (или ISBN).
  */
 export function isLikelyDuplicate(a: CatalogBook, b: CatalogBook): boolean {
-  const isbnA = new Set((a.isbn ?? []).map((value) => normalizeIsbn(value)).filter(Boolean) as string[]);
+  const isbnA = new Set((a.isbn ?? []).flatMap((value) => isbnEquivalents(value)));
   if (isbnA.size > 0) {
     for (const isbn of b.isbn ?? []) {
-      const normalized = normalizeIsbn(isbn);
-      if (normalized && isbnA.has(normalized)) return true;
+      if (isbnEquivalents(isbn).some((value) => isbnA.has(value))) return true;
     }
   }
   const titleScore = titleSimilarity(a.title, b.title);
@@ -107,8 +147,13 @@ export function isLikelyDuplicate(a: CatalogBook, b: CatalogBook): boolean {
   const authorB = normalizeAuthor(b.authors[0]);
   if (!authorA || !authorB) return titleScore >= 0.92;
   if (authorA === authorB) return true;
-  // Фамилия совпадает — достаточно при почти идентичном названии.
-  const surnameA = authorA.split(' ').slice(-1)[0];
-  const surnameB = authorB.split(' ').slice(-1)[0];
-  return surnameA === surnameB && titleScore >= 0.86;
+  // «Лев Толстой» и «Толстой Лев» — один автор: сравниваем наборы слов.
+  const tokensA = new Set(authorA.split(' ').filter((token) => token.length > 1));
+  const tokensB = new Set(authorB.split(' ').filter((token) => token.length > 1));
+  let intersection = 0;
+  for (const token of tokensA) if (tokensB.has(token)) intersection += 1;
+  if (tokensA.size >= 2 && tokensB.size >= 2 && intersection >= 2) return true;
+  // Одно слово (обычно фамилия) совпадает — достаточно при близком названии.
+  const singleMatch = intersection >= 1 && Math.min(tokensA.size, tokensB.size) >= 1;
+  return singleMatch && titleScore >= 0.86;
 }

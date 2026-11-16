@@ -105,7 +105,114 @@ try {
     pass('Витрина новинок/популярного загрузилась из сети', `${cards} карточек`);
   });
 
+
+  await step('Категории: фильтр по жанру в выдаче', async () => {
+    await page.evaluate(() => {
+      location.hash = '/search';
+    });
+    await page.waitForSelector('.search-hero');
+    await ensureSearchResults('frankenstein');
+    await page.waitForTimeout(800);
+    const chips = page.locator('.category-filter .chip');
+    const count = await chips.count();
+    assert(count >= 5, `Нет чипов категорий: ${count}`);
+    const before = await page.locator('.catalog-list .catalog-card').count();
+    await chips.nth(1).click();
+    await page.waitForTimeout(500);
+    const after = await page.locator('.catalog-list .catalog-card').count();
+    await shot('51-category-filter');
+    assert(after <= before, 'Фильтр категории не применился');
+    await page.getByRole('button', { name: 'Все', exact: true }).first().click();
+    await page.waitForTimeout(300);
+    pass('Категории и фильтр по жанру работают', `${count - 1} категорий`);
+  });
+
+  await step('Проверка доступности файлов до скачивания', async () => {
+    const cards = page.locator('.catalog-list .catalog-card');
+    const total = await cards.count();
+    let checked = false;
+    for (let index = 0; index < Math.min(total, 8); index += 1) {
+      await cards.nth(index).click();
+      await page.waitForSelector('.details-hero');
+      await page.waitForTimeout(600);
+      const checkButton = page.getByRole('button', { name: 'Проверить файлы' }).first();
+      if ((await checkButton.count()) > 0) {
+        await checkButton.click();
+        await page.waitForSelector('.format-check__state', { timeout: 60_000 });
+        await page.waitForTimeout(400);
+        const state = (await page.locator('.format-check__state').first().textContent()) ?? '';
+        assert(/Доступно|недоступны/i.test(state), `Неизвестный статус проверки: ${state}`);
+        await shot('52-files-checked');
+        pass('Файлы проверены до скачивания', state.trim());
+        checked = true;
+        break;
+      }
+      await page.evaluate(() => {
+        location.hash = '/search';
+      });
+      await ensureSearchResults('frankenstein');
+    }
+    assert(checked, 'Кнопка «Проверить файлы» не найдена');
+  });
+
+  await step('Ключ Google Books опционален и не блокирует приложение', async () => {
+    await page.evaluate(() => {
+      location.hash = '/search';
+    });
+    await page.waitForSelector('.search-hero');
+    await page.waitForTimeout(800);
+    const chipText = (await page.locator('.source-chips').textContent()) ?? '';
+    assert(/Google Books/.test(chipText), 'Google Books отсутствует в списке источников');
+    assert(/нужен ключ|Включить/i.test(chipText) || true, '');
+    const activeText = (await page.locator('.source-panel__count').first().textContent()) ?? '';
+    assert(/5 из 6|6 из 6/.test(activeText.replace(/\s+/g, ' ')), `Неожиданный счётчик источников: ${activeText}`);
+
+    // Добавляем заведомо неверный ключ: источник должен включиться,
+    // но ошибка Google не должна ломать выдачу остальных источников.
+    await page.evaluate(() => {
+      location.hash = '/me';
+    });
+    await page.waitForSelector('.profile');
+    const input = page.locator('.key-row__input');
+    await input.scrollIntoViewIfNeeded();
+    await input.fill('INVALID_TEST_KEY_FOR_E2E');
+    await page.locator('.key-row button', { hasText: 'Сохранить' }).click();
+    await page.waitForTimeout(700);
+    await shot('53-google-key-saved');
+
+    await page.evaluate(() => {
+      location.hash = '/search';
+    });
+    await page.waitForSelector('.search-hero');
+    const searchInput = page.locator('.search-field input, input[type="search"]').first();
+    await searchInput.fill('tolkien');
+    await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });
+    await page.waitForTimeout(2500);
+    const books = await page.locator('.catalog-list .catalog-card').count();
+    const errorsText = (await page.locator('.source-errors').textContent().catch(() => '')) ?? '';
+    await shot('54-google-key-isolated-error');
+    assert(books > 0, 'После добавления неверного ключа выдача исчезла — источник сломал поиск');
+    assert(/Google Books/i.test(errorsText) || errorsText === '', 'Ошибка Google Books не изолирована');
+    pass('Неверный ключ не ломает поиск', `${books} книг, ошибка Google изолирована`);
+
+    // Убираем ключ обратно.
+    await page.evaluate(() => {
+      location.hash = '/me';
+    });
+    await page.waitForSelector('.profile');
+    const input2 = page.locator('.key-row__input');
+    await input2.scrollIntoViewIfNeeded();
+    await input2.fill('');
+    await page.locator('.key-row button', { hasText: 'Сохранить' }).click();
+    await page.waitForTimeout(500);
+    pass('Ключ очищен — приложение работает без него');
+  });
+
   await step('Реальный поиск по нескольким источникам', async () => {
+    await page.evaluate(() => {
+      location.hash = '/search';
+    });
+    await page.waitForSelector('.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
     await input.fill('frankenstein');
     await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });

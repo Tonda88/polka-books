@@ -18,6 +18,7 @@ import { MyBooksScreen } from './screens/MyBooks';
 import { DownloadsScreen } from './screens/DownloadsScreen';
 import { AudioBookScreen } from './screens/AudioBookScreen';
 import { downloads } from './downloads/manager';
+import { ensureProxyMode } from './catalog/proxy';
 import { TabBar } from './components/TabBar';
 import { MiniPlayer } from './components/MiniPlayer';
 import { Toaster } from './components/Toaster';
@@ -63,9 +64,12 @@ function Shell() {
   const route = useRoute();
   const player = usePlayer();
 
-  // Восстанавливаем скачанные сетевые книги из IndexedDB при старте.
+  // Восстанавливаем скачанные сетевые книги и проверяем серверный прокси.
   useEffect(() => {
     void downloads.init();
+    // Если приложение запущено со своего сервера, доступны прокси файлов
+    // и опциональный серверный ключ Google Books (без ключа в клиенте).
+    void ensureProxyMode();
   }, []);
 
   const fullScreen = route.screen === 'reader' || route.screen === 'player';

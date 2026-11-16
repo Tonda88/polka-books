@@ -1395,3 +1395,50 @@
     display: none;
   }
 }
+
+/* --- метаданные книги: язык и категория --- */
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  white-space: nowrap;
+}
+
+.meta-badge--muted {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+/* --- проверка доступности файлов --- */
+.format-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 2px 0 10px;
+}
+
+.format-check__state {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.format-check__state.is-ok {
+  color: var(--green);
+}
+
+.format-check__state.is-bad {
+  color: var(--red);
+}
+
+/* --- фильтр категорий --- */
+.category-filter {
+  margin: 0 0 4px;
+}

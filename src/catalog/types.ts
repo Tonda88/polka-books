@@ -65,6 +65,8 @@ export interface CatalogBook {
   rating?: number;
   ratingsCount?: number;
   coverUrl?: string;
+  /** Другие обложки, полученные из источников (после объединения дублей). */
+  coverAlternatives?: string[];
   /** Форматы, реально доступные для скачивания. */
   files: DownloadFile[];
   access: AccessMode;

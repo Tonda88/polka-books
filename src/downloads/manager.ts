@@ -13,6 +13,7 @@
  * задача; они добавляются к общей записи аудиокниги по мере готовности.
  */
 import { resolveDownloadUrl } from '../catalog/proxy';
+import { probeFile } from '../catalog/availability';
 import type { AudioTrack, BookFormat, CatalogBook, DownloadFile } from '../catalog/types';
 import {
   idbDeleteBook,
@@ -423,6 +424,12 @@ export class DownloadsManager implements DownloadManager {
 
   private async processSingle(task: DownloadTask, signal: AbortSignal): Promise<number> {
     const localId = localIdFor(task.book);
+    // Сначала лёгкая проверка: файл существует и отдаётся? Экономит время
+    // и даёт честную ошибку вместо «скачали 404-страницу».
+    const probe = await probeFile({ url: task.url, format: task.format as BookFormat }).catch(() => null);
+    if (probe && probe.status === 404) {
+      throw new Error('Файл не найден у источника (404). Попробуйте другой формат.');
+    }
     // EPUB/PDF из Internet Archive не отдаются с CORS — качаем через наш прокси.
     const effectiveUrl = await resolveDownloadUrl(task.url, task.format);
     const downloaded = await this.withFileTimeout(

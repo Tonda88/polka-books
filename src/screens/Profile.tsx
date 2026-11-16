@@ -294,7 +294,10 @@ export function ProfileScreen() {
             </button>
           </div>
           <p className="settings-card__hint">
-            Без ключа Google возвращает ошибку квоты (429). Ключ хранится только на этом устройстве.
+            Ключ необязателен: без него поиск работает по Open Library, Internet Archive, Gutenberg и LibriVox.
+            В Google Cloud Console ограничьте ключ API «Books API» и, для Android, приложением
+            <code> ru.polka.books </code> с отпечатком SHA-1 сертификата подписи. Для производственной
+            версии ключ лучше держать на сервере: <code>GOOGLE_BOOKS_KEY</code> — тогда он не попадает в приложение.
           </p>
         </div>
         <button type="button" className="setting-button" onClick={() => void checkSourcesNow()}>

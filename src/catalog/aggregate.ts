@@ -3,6 +3,8 @@
  * параллельный поиск, нормализация, удаление дублей, ранжирование.
  */
 import { toSourceError } from './http';
+import { isCircuitOpen, withSourceGuard } from './limits';
+import { withBestCover } from './covers';
 import { isLikelyDuplicate, normalizeIsbn, normalizeTitle } from './normalize';
 import { enabledSources, listSources } from './registry';
 import type {
@@ -25,7 +27,10 @@ export interface AggregateOptions {
 }
 
 function isOnline(): boolean {
-  return typeof navigator === 'undefined' ? true : navigator.onLine;
+  // В браузере navigator.onLine === false — офлайн. В Node (и WebView без
+  // этого поля) считаем, что сеть есть: пусть решают таймауты запросов.
+  if (typeof navigator === 'undefined') return true;
+  return navigator.onLine !== false;
 }
 
 function relevanceScore(book: CatalogBook, query: SearchQuery): number {
@@ -123,6 +128,7 @@ function mergeBooks(primary: CatalogBook, secondary: CatalogBook): CatalogBook {
     languages: [...new Set([...(base.languages ?? []), ...(other.languages ?? [])])],
     isbn: isbn.length > 0 ? isbn : undefined,
     coverUrl: base.coverUrl ?? other.coverUrl,
+    coverAlternatives: [...new Set([...(base.coverAlternatives ?? []), ...(other.coverAlternatives ?? []), base.coverUrl, other.coverUrl].filter(Boolean) as string[])].slice(0, 6),
     rating: base.rating ?? other.rating,
     ratingsCount: base.ratingsCount ?? other.ratingsCount,
     files,
@@ -146,7 +152,7 @@ export function dedupeBooks(books: CatalogBook[]): CatalogBook[] {
       result[duplicateIndex] = mergeBooks(result[duplicateIndex], book);
     }
   }
-  return result;
+  return result.map((book) => withBestCover(book));
 }
 
 function prepareQuery(query: SearchQuery): SearchQuery {
@@ -192,16 +198,26 @@ export async function searchAll(query: SearchQuery, options: AggregateOptions = 
   const runSource = async (source: BookSource): Promise<CatalogBook[]> => {
     options.status?.(`Ищем в ${source.name}…`);
     try {
-      if (prepared.isbn && source.byIsbn) {
-        const byIsbn = await source.byIsbn(prepared.isbn, ctx);
-        if (byIsbn.length > 0) {
-          perSource[source.id] = byIsbn.length;
-          return byIsbn;
+      const guarded = await withSourceGuard(source.id, async () => {
+        if (prepared.isbn && source.byIsbn) {
+          const byIsbn = await source.byIsbn(prepared.isbn, ctx);
+          if (byIsbn.length > 0) return byIsbn;
         }
+        return source.search({ ...prepared, limit: perSourceLimit }, ctx);
+      });
+      if (guarded === null) {
+        // Предохранитель открыт: источник не опрашиваем, остальные работают.
+        errors.push({
+          sourceId: source.id,
+          sourceName: source.name,
+          message: 'Источник временно пропущен после серии ошибок — повторим позже',
+          retryable: true,
+        });
+        perSource[source.id] = 0;
+        return [];
       }
-      const books = await source.search({ ...prepared, limit: perSourceLimit }, ctx);
-      perSource[source.id] = books.length;
-      return books;
+      perSource[source.id] = guarded.length;
+      return guarded;
     } catch (error) {
       errors.push(toSourceError(source.id, source.name, error));
       perSource[source.id] = 0;
@@ -254,7 +270,11 @@ export async function subjectBooks(
   const results = await Promise.all(
     sources.map(async (source) => {
       try {
-        const books = await source.bySubject!(subject, ctx);
+        const books = await withSourceGuard(source.id, () => source.bySubject!(subject, ctx));
+        if (books === null) {
+          perSource[source.id] = 0;
+          return [];
+        }
         perSource[source.id] = books.length;
         return books;
       } catch (error) {
@@ -308,7 +328,17 @@ async function collectFromSources(
   const results = await Promise.all(
     sources.map(async (source) => {
       try {
-        const books = await (mode === 'newest' ? source.newest!(ctx) : source.popular!(ctx));
+        if (isCircuitOpen(source.id)) {
+          perSource[source.id] = 0;
+          return [];
+        }
+        const books = await withSourceGuard(source.id, () =>
+          mode === 'newest' ? source.newest!(ctx) : source.popular!(ctx),
+        );
+        if (books === null) {
+          perSource[source.id] = 0;
+          return [];
+        }
         perSource[source.id] = books.length;
         return books;
       } catch (error) {

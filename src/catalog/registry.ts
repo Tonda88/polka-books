@@ -6,6 +6,7 @@
  * объединение, UI) менять не нужно.
  */
 import type { BookSource, SourceHealth } from './types';
+import { hasServerGoogleKey } from './proxy';
 import { googleBooksSource } from './sources/googleBooks';
 import { openLibrarySource } from './sources/openLibrary';
 import { internetArchiveSource } from './sources/internetArchive';
@@ -31,12 +32,27 @@ export function listSources(): BookSource[] {
   return [...registry.values()];
 }
 
-/** Источники, доступные прямо сейчас (например, Google Books без ключа отключён). */
+/**
+ * Источники, доступные прямо сейчас.
+ *
+ * Google Books требует ключ, но источник включается и без ключа пользователя,
+ * если ключ настроен на сервере (серверный прокси). Отсутствие ключа никогда
+ * не блокирует остальные источники и запуск приложения.
+ */
 export function enabledSources(options: { googleKey?: string | null } = {}): BookSource[] {
+  const keyAvailable = Boolean(options.googleKey) || hasServerGoogleKey();
   return [...registry.values()].filter((source) => {
-    if (source.capabilities.requiresKey && !options.googleKey) return false;
+    if (source.capabilities.requiresKey && !keyAvailable) return false;
     return true;
   });
+}
+
+/** Причина, по которой источник выключен (для подсказки в UI). */
+export function disabledReason(source: BookSource, options: { googleKey?: string | null } = {}): string | null {
+  if (!source.capabilities.requiresKey) return null;
+  if (options.googleKey) return null;
+  if (hasServerGoogleKey()) return null;
+  return 'Нужен API-ключ: добавьте свой в Профиле или настройте ключ на сервере';
 }
 
 export async function checkSources(
