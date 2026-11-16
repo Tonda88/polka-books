@@ -2,7 +2,7 @@
  * Объединение результатов из нескольких источников:
  * параллельный поиск, нормализация, удаление дублей, ранжирование.
  */
-import { toSourceError } from './http';
+import { isAbortError, toSourceError } from './http';
 import { isCircuitOpen, withSourceGuard } from './limits';
 import { withBestCover } from './covers';
 import { isLikelyDuplicate, normalizeIsbn, normalizeTitle } from './normalize';
@@ -211,10 +211,13 @@ export async function searchAll(query: SearchQuery, options: AggregateOptions = 
       });
       if (guarded === null) {
         // Предохранитель открыт: источник не опрашиваем, остальные работают.
+        const starting = perSource[source.id] === undefined && Object.keys(perSource).length === 0;
         errors.push({
           sourceId: source.id,
           sourceName: source.name,
-          message: 'Источник временно пропущен после серии ошибок — повторим позже',
+          message: starting
+            ? 'Источник пока не отвечает — поиск продолжится по остальным'
+            : 'Источник временно отключён после серии ошибок — нажмите «Повторить»',
           retryable: true,
         });
         perSource[source.id] = 0;
@@ -223,7 +226,15 @@ export async function searchAll(query: SearchQuery, options: AggregateOptions = 
       perSource[source.id] = guarded.length;
       return guarded;
     } catch (error) {
-      errors.push(toSourceError(source.id, source.name, error));
+      // Отмена — это не ошибка: не показываем её пользователю.
+      if (!isAbortError(error)) {
+        const failure = toSourceError(source.id, source.name, error);
+        if (/не ответил|timeout|Timeout/i.test(failure.message)) {
+          failure.message = 'Источник не ответил вовремя — остальные источники уже показали книги';
+          failure.retryable = true;
+        }
+        errors.push(failure);
+      }
       perSource[source.id] = 0;
       return [];
     }
@@ -294,7 +305,7 @@ export async function subjectBooks(
         perSource[source.id] = books.length;
         return books;
       } catch (error) {
-        errors.push(toSourceError(source.id, source.name, error));
+        if (!isAbortError(error)) errors.push(toSourceError(source.id, source.name, error));
         perSource[source.id] = 0;
         return [];
       }
@@ -358,7 +369,7 @@ async function collectFromSources(
         perSource[source.id] = books.length;
         return books;
       } catch (error) {
-        errors.push(toSourceError(source.id, source.name, error));
+        if (!isAbortError(error)) errors.push(toSourceError(source.id, source.name, error));
         perSource[source.id] = 0;
         return [];
       }

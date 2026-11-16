@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-16T20:01:53.695Z",
+  "ranAt": "2026-11-16T20:22:50.240Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -12,12 +12,12 @@
     {
       "name": "Оценка и быстрая реакция сохранены",
       "ok": true,
-      "extra": "Frankenstein oder Der moderne Prometheus"
+      "extra": "Mary Shelley's Frankenstein; or, the Modern Prometheus (1818 text)"
     },
     {
       "name": "RatingEntity + UserPreferences + AuthorPreference",
       "ok": true,
-      "extra": "оценка 5★/love, сигналов 4, авторов 10"
+      "extra": "оценка 5★/love, сигналов 4, авторов 9"
     },
     {
       "name": "Предпочтения отображаются",
@@ -32,7 +32,7 @@
     {
       "name": "Полки рекомендаций построены",
       "ok": true,
-      "extra": "28 карточек"
+      "extra": "29 карточек"
     },
     {
       "name": "Негатив учтён и сбрасывается вручную",
@@ -45,5 +45,27 @@
       "extra": ""
     }
   ],
-  "pageErrors": []
+  "pageErrors": [
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT"
+  ]
 }

@@ -4,6 +4,7 @@
  * без сторонних прокси и без обхода ограничений.
  */
 import type { SourceError } from './types';
+import { isProxyAvailable } from './proxy';
 
 export class ApiError extends Error {
   status?: number;
@@ -24,6 +25,14 @@ export interface FetchOptions {
   headers?: Record<string, string>;
   /** Ответ уже в виде ArrayBuffer (файлы). */
   binary?: boolean;
+}
+
+/** Отмена запроса пользователем/новым поиском — это не сбой источника. */
+export function isAbortError(error: unknown): boolean {
+  return (
+    (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
 }
 
 const DEFAULT_TIMEOUT = 12_000;
@@ -85,6 +94,10 @@ export async function fetchWithRetry(url: string, options: FetchOptions = {}): P
       if (!response.ok) throw describeError(null, response.status);
       return response;
     } catch (error) {
+      // Внешняя отмена (новый запрос, уход с экрана) — не ошибка источника.
+      if (options.signal?.aborted || isAbortError(error)) {
+        throw error instanceof Error ? error : new DOMException('aborted', 'AbortError');
+      }
       lastError = describeError(error, (error as ApiError)?.status);
       if (!lastError.retryable || attempt === retries) throw lastError;
       await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
@@ -95,13 +108,63 @@ export async function fetchWithRetry(url: string, options: FetchOptions = {}): P
   throw lastError ?? new ApiError('Не удалось выполнить запрос');
 }
 
-export async function fetchJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
-  const response = await fetchWithRetry(url, options);
-  const text = await response.text();
+
+/** Домены, для которых возможен фолбэк через наш серверный прокси. */
+const PROXY_HOSTS = ['archive.org', 'openlibrary.org', 'covers.openlibrary.org', 'gutenberg.org', 'librivox.org'];
+
+function canUseProxy(url: string): boolean {
   try {
-    return JSON.parse(text) as T;
+    const host = new URL(url).hostname.toLowerCase();
+    return PROXY_HOSTS.some((allowed) => host === allowed || host.endsWith('.' + allowed));
   } catch {
-    throw new ApiError('Источник вернул некорректный JSON', response.status, false);
+    return false;
+  }
+}
+
+/**
+ * Internet Archive периодически отвечает без CORS-заголовков (и тогда браузер
+ * блокирует запрос), хотя сам API доступен. Пробуем ещё раз через наш
+ * серверный прокси: на ПК его даёт server/serve.mjs, в APK — LocalServer.
+ */
+async function fetchJsonViaProxy<T>(url: string, options: FetchOptions): Promise<T> {
+  const proxied = `/api/fetch?url=${encodeURIComponent(url)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('timeout', 'TimeoutError')),
+    options.timeoutMs ?? DEFAULT_TIMEOUT,
+  );
+  const onAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onAbort, { once: true });
+  try {
+    const response = await fetch(proxied, { signal: controller.signal, headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new ApiError(`Прокси источника ответил ${response.status}`, response.status, true);
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onAbort);
+  }
+}
+export async function fetchJson<T>(url: string, options: FetchOptions = {}): Promise<T> {
+  const parse = async (response: Response): Promise<T> => {
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new ApiError('Источник вернул некорректный JSON', response.status, false);
+    }
+  };
+
+  try {
+    return await parse(await fetchWithRetry(url, options));
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    // Сетевой сбой или CORS — пробуем через серверный прокси, если он доступен.
+    const status = error instanceof ApiError ? error.status : undefined;
+    const networkFailure = !status || status >= 500;
+    if (networkFailure && canUseProxy(url) && (await isProxyAvailable())) {
+      return fetchJsonViaProxy<T>(url, options);
+    }
+    throw error;
   }
 }
 

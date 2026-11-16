@@ -62,6 +62,7 @@ const covers = await import(new URL(`file:///${BUNDLE.replace(/\\/g, '/')}/cover
 const availability = await import(new URL(`file:///${BUNDLE.replace(/\\/g, '/')}/availability.js`).href);
 const aggregate = await import(new URL(`file:///${BUNDLE.replace(/\\/g, '/')}/aggregate.js`).href);
 const registry = await import(new URL(`file:///${BUNDLE.replace(/\\/g, '/')}/registry.js`).href);
+const limits = await import(new URL(`file:///${BUNDLE.replace(/\\/g, '/')}/limits.js`).href);
 
 const sampleBook = (overrides = {}) => ({
   id: 'test:1',
@@ -190,6 +191,52 @@ if (serverUp) {
 } else {
   console.log(paint('dim', '  (сервер не запущен — проверки прокси пропущены)'));
 }
+
+
+// ===========================================================================
+section('Предохранитель: отмена ≠ ошибка источника');
+const busy = 'test-busy-source';
+limits.resetSourceGuard();
+const abortError = () => {
+  const error = new Error('aborted');
+  error.name = 'AbortError';
+  return error;
+};
+for (let index = 0; index < 5; index += 1) {
+  await limits
+    .withSourceGuard(busy, async () => {
+      throw abortError();
+    }, { skipDelay: true })
+    .catch(() => null);
+}
+check('пять отмен не открывают предохранитель', !limits.isCircuitOpen(busy));
+
+const failing = 'test-failing-source';
+limits.resetSourceGuard();
+for (let index = 0; index < 3; index += 1) {
+  await limits
+    .withSourceGuard(failing, async () => {
+      throw new Error('503 Service Unavailable');
+    }, { skipDelay: true })
+    .catch(() => null);
+}
+check('три реальные ошибки открывают предохранитель', limits.isCircuitOpen(failing));
+check('источник пропускается без запроса', (await limits.withSourceGuard(failing, async () => 'ok', { skipDelay: true })) === null);
+limits.resetSourceGuard();
+check('ручной сброс возвращает источник', !limits.isCircuitOpen(failing));
+
+const healthy = 'test-healthy-source';
+limits.resetSourceGuard();
+let ran = 0;
+await limits.withSourceGuard(healthy, async () => {
+  ran += 1;
+  throw new Error('разовая ошибка');
+}, { skipDelay: true }).catch(() => null);
+const value = await limits.withSourceGuard(healthy, async () => {
+  ran += 1;
+  return 'ok';
+}, { skipDelay: true });
+check('успех после ошибки продолжает работу', value === 'ok' && ran === 2);
 
 // ===========================================================================
 section('Источники и изоляция сбоев');

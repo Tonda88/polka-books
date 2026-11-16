@@ -1,3 +1,5 @@
+import { isAbortError } from './http';
+
 /**
  * Защита от лимитов и падений отдельных источников.
  *
@@ -32,9 +34,9 @@ const MIN_INTERVAL: Record<string, number> = {
 };
 
 /** Сколько ошибок подряд открывают предохранитель. */
-const FAILURE_THRESHOLD = 3;
+const FAILURE_THRESHOLD = 2;
 /** Пауза для источника после серии ошибок, мс. */
-const CIRCUIT_COOLDOWN = 60_000;
+const CIRCUIT_COOLDOWN = 45_000;
 
 function stateOf(sourceId: string): SourceState {
   let entry = state.get(sourceId);
@@ -105,6 +107,9 @@ export async function withSourceGuard<T>(
     entry.failures = 0;
     return result;
   } catch (error) {
+    // Отмену запроса (смена поисковой строки, уход с экрана) не считаем
+    // ошибкой источника — иначе предохранитель ложно открывается.
+    if (isAbortError(error)) throw error;
     entry.failures += 1;
     entry.totalFailures += 1;
     entry.lastFailureAt = Date.now();

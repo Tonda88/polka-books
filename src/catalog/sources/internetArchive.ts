@@ -163,7 +163,7 @@ export async function iaAdvancedSearch(
   if (sort) url.searchParams.append('sort[]', sort);
   const data = await fetchJson<IaSearchResponse>(url.toString(), {
     signal: ctx.signal,
-    timeoutMs: 15_000,
+    timeoutMs: 12_000, retries: 1,
   });
   return data.response?.docs ?? [];
 }
@@ -174,7 +174,7 @@ export async function iaFetchItem(identifier: string, ctx: SourceContext): Promi
   try {
     return await fetchJson<IaItemResponse>(`${METADATA_URL}${encodeURIComponent(identifier)}`, {
       signal: ctx.signal,
-      timeoutMs: 15_000,
+      timeoutMs: 12_000,
       retries: 0,
     });
   } catch {

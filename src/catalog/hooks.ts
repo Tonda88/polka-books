@@ -12,6 +12,7 @@ import { downloads } from '../downloads/manager';
 import type { DownloadTask, NetworkBook } from '../downloads/types';
 import { newestBooks, popularBooks, searchAll, subjectBooks } from './aggregate';
 import { booksCacheKey, cacheGet, cacheSet, recallBook, rememberBooks, searchCacheKey, TTL } from './cache';
+import { resetSourceGuard } from './limits';
 import { checkSources, getSource } from './registry';
 import type { CatalogBook, SearchQuery, SearchResult, SourceHealth } from './types';
 
@@ -136,6 +137,9 @@ function useCachedSearchResult(
 
   const refresh = useCallback(() => {
     bypassCache.current = true;
+    // Явное обновление — второй шанс для источников, которые были
+    // временно пропущены после серии ошибок.
+    resetSourceGuard();
     setNonce((value) => value + 1);
   }, []);
 

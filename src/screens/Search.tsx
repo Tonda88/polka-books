@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BookSource, SearchQuery, SourceError, SourceHealth } from '../catalog/types';
 import {
   useCatalogSearch,
@@ -11,6 +11,7 @@ import {
 import { listSources } from '../catalog/registry';
 import { CATEGORIES, filterByCategory, type CategoryId } from '../catalog/classify';
 import { recordSearch } from '../prefs/repository';
+import { resetSourceGuard } from '../catalog/limits';
 import { formatNumber, plural, shortText } from '../lib/format';
 import { getSearchQuery } from '../lib/router';
 import { useAppOptional } from '../lib/store';
@@ -169,6 +170,24 @@ export function SearchScreen() {
   const resetSources = (): void => setOverrides({});
 
   const errors = search.result?.errors ?? [];
+  const skippedSources = errors.filter((error) => /временно пропущен/i.test(error.message));
+  const retrySkipped = () => {
+    resetSourceGuard();
+    search.refresh();
+  };
+  // Если источники были пропущены после серии ошибок — один раз пробуем снова.
+  const retriedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (skippedSources.length === 0 || search.loading) return;
+    const key = `${searchText}:${field}`;
+    if (retriedFor.current === key) return;
+    retriedFor.current = key;
+    const timer = setTimeout(() => {
+      resetSourceGuard();
+      search.refresh();
+    }, 15_000);
+    return () => clearTimeout(timer);
+  }, [skippedSources.length, search.loading, searchText, field]);
   const searchableSources = activeSources.filter((source) => source.capabilities.search).length;
   const visibleBooks = useMemo(
     () => (search.result ? search.result.books.filter((book) => filterByCategory(book, categoryFilter)) : []),
@@ -279,6 +298,11 @@ export function SearchScreen() {
 
       {hasQuery ? (
         <>
+          {skippedSources.length > 0 && (
+            <button type="button" className="source-errors__retry" onClick={retrySkipped}>
+              Повторить поиск по пропущенным источникам
+            </button>
+          )}
           {errors.length > 0 && (
             <ul className="source-errors" aria-label="Ошибки источников">
               {errors.slice(0, 4).map((error) => (
