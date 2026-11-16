@@ -230,6 +230,27 @@ try {
     pass('Поиск объединил источники', `${rows} книг · ${status.slice(0, 60)}`);
   });
 
+
+  await step('Поиск по серии', async () => {
+    await page.evaluate(() => {
+      location.hash = '/search';
+    });
+    await page.waitForSelector('.search-hero');
+    await page.getByRole('button', { name: 'Серия', exact: true }).click();
+    const input = page.locator('.search-field input, input[type="search"]').first();
+    await input.fill('Ведьмак');
+    const got = await page
+      .waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 })
+      .then(() => true)
+      .catch(() => false);
+    const rows = await page.locator('.catalog-list .catalog-card').count();
+    const status = ((await page.locator('.search-status').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+    await shot('55-series-search');
+    assert(got && rows > 0, `Поиск по серии пуст: ${rows} (статус: ${status})`);
+    pass('Поиск по серии работает', `${rows} книг`);
+    await page.getByRole('button', { name: 'Все', exact: true }).first().click();
+  });
+
   await step('Карточка книги: скачивание реального файла', async () => {
     const cards = page.locator('.catalog-list .catalog-card');
     const total = await cards.count();

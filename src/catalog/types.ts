@@ -87,6 +87,8 @@ export interface SearchQuery {
   author?: string;
   isbn?: string;
   subject?: string;
+  /** Поиск по серии/циклу (например, «Ведьмак»). */
+  series?: string;
   language?: string;
   sort?: SortMode;
   limit?: number;

@@ -34,7 +34,7 @@ function isOnline(): boolean {
 }
 
 function relevanceScore(book: CatalogBook, query: SearchQuery): number {
-  const tokens = [query.text, query.title, query.author, query.subject]
+  const tokens = [query.text, query.title, query.author, query.subject, query.series]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
@@ -44,11 +44,13 @@ function relevanceScore(book: CatalogBook, query: SearchQuery): number {
   const title = book.title.toLowerCase();
   const author = book.authors.join(' ').toLowerCase();
   const subjects = book.subjects.join(' ').toLowerCase();
+  const series = (book.series ?? '').toLowerCase();
   let score = 0;
   for (const token of tokens) {
     if (title.includes(token)) score += 3;
     if (author.includes(token)) score += 2;
     if (subjects.includes(token)) score += 0.5;
+    if (series.includes(token)) score += 2.5;
   }
   // Бонус за скачиваемость и популярность.
   if (book.files.some((file) => !file.requiresAuth)) score += 0.5;
@@ -163,6 +165,7 @@ function prepareQuery(query: SearchQuery): SearchQuery {
     author: query.author?.trim() || undefined,
     isbn: query.isbn?.replace(/[^0-9Xx]/g, '') || undefined,
     subject: query.subject?.trim() || undefined,
+    series: query.series?.trim() || undefined,
   };
 }
 
@@ -198,12 +201,13 @@ export async function searchAll(query: SearchQuery, options: AggregateOptions = 
   const runSource = async (source: BookSource): Promise<CatalogBook[]> => {
     options.status?.(`Ищем в ${source.name}…`);
     try {
+      const searchQuery = prepared.series && !prepared.text ? { ...prepared, text: prepared.series } : prepared;
       const guarded = await withSourceGuard(source.id, async () => {
         if (prepared.isbn && source.byIsbn) {
           const byIsbn = await source.byIsbn(prepared.isbn, ctx);
           if (byIsbn.length > 0) return byIsbn;
         }
-        return source.search({ ...prepared, limit: perSourceLimit }, ctx);
+        return source.search({ ...searchQuery, limit: perSourceLimit }, ctx);
       });
       if (guarded === null) {
         // Предохранитель открыт: источник не опрашиваем, остальные работают.
@@ -227,10 +231,22 @@ export async function searchAll(query: SearchQuery, options: AggregateOptions = 
 
   const settled = await Promise.all(candidates.map(runSource));
   const merged = dedupeBooks(settled.flat());
+  let filtered = merged;
+  if (prepared.series) {
+    const needle = prepared.series.toLowerCase();
+    const seriesMatched = merged.filter(
+      (book) =>
+        Boolean(book.series && book.series.toLowerCase().includes(needle)) ||
+        book.title.toLowerCase().includes(needle),
+    );
+    // Если источники не отдали поле series, оставляем текстовые совпадения,
+    // но не прячем всю выдачу: series в метаданных есть далеко не везде.
+    filtered = seriesMatched.length > 0 ? seriesMatched : merged;
+  }
   const ranked =
     prepared.sort === 'relevance' || !prepared.sort
-      ? [...merged].sort((a, b) => relevanceScore(b, prepared) - relevanceScore(a, prepared))
-      : sortBooks(merged, prepared.sort);
+      ? [...filtered].sort((a, b) => relevanceScore(b, prepared) - relevanceScore(a, prepared))
+      : sortBooks(filtered, prepared.sort);
 
   return {
     books: ranked.slice(0, limit),
@@ -359,5 +375,7 @@ async function collectFromSources(
 
 /** Точный поиск по названию — для «похожих книг» и рекомендаций. */
 export function queryKey(query: SearchQuery): string {
-  return normalizeTitle([query.text, query.title, query.author, query.isbn, query.subject].filter(Boolean).join(' '));
+  return normalizeTitle(
+    [query.text, query.title, query.author, query.isbn, query.subject, query.series].filter(Boolean).join(' '),
+  );
 }

@@ -23,6 +23,7 @@ const SEARCH_FIELDS = [
   { id: 'author', label: 'Автор' },
   { id: 'isbn', label: 'ISBN' },
   { id: 'subject', label: 'Жанр' },
+  { id: 'series', label: 'Серия' },
 ] as const;
 
 type SearchField = (typeof SEARCH_FIELDS)[number]['id'];
@@ -33,6 +34,7 @@ const FIELD_PLACEHOLDERS: Record<SearchField, string> = {
   author: 'Имя автора',
   isbn: 'ISBN книги',
   subject: 'Жанр или тема',
+  series: 'Серия или цикл, например «Ведьмак»',
 };
 
 /** Категории для быстрых подборок: подпись и запрос к источникам. */
@@ -120,6 +122,8 @@ export function SearchScreen() {
         return { isbn: searchText };
       case 'subject':
         return { subject: searchText };
+      case 'series':
+        return { series: searchText };
       default:
         return { text: searchText };
     }

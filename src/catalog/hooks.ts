@@ -226,9 +226,10 @@ export function useCatalogSearch(query: SearchQuery, options: CatalogSearchOptio
   const author = query.author?.trim() ?? '';
   const isbn = query.isbn?.trim() ?? '';
   const subject = query.subject?.trim() ?? '';
+  const series = query.series?.trim() ?? '';
   const sort = query.sort;
   const sourceTag = sourceIds ? [...sourceIds].sort().join('|') : 'all';
-  const hasQuery = Boolean(text || title || author || isbn || subject);
+  const hasQuery = Boolean(text || title || author || isbn || subject || series);
 
   const cacheKey = useMemo(
     () =>
@@ -239,12 +240,13 @@ export function useCatalogSearch(query: SearchQuery, options: CatalogSearchOptio
             author: author || undefined,
             isbn: isbn || undefined,
             subject: subject || undefined,
+            series: series || undefined,
             sort: sort ?? 'relevance',
             limit,
             sources: sourceTag || 'all',
           })
         : null,
-    [hasQuery, text, title, author, isbn, subject, sort, limit, sourceTag],
+    [hasQuery, text, title, author, isbn, subject, series, sort, limit, sourceTag],
   );
 
   const load = useCallback(
@@ -256,12 +258,13 @@ export function useCatalogSearch(query: SearchQuery, options: CatalogSearchOptio
           author: author || undefined,
           isbn: isbn || undefined,
           subject: subject || undefined,
+          series: series || undefined,
           sort,
           limit,
         },
         { signal, sourceIds, googleKey, perSourceLimit: perSourceLimit ?? limit },
       ),
-    [text, title, author, isbn, subject, sort, limit, sourceIds, googleKey, perSourceLimit],
+    [text, title, author, isbn, subject, series, sort, limit, sourceIds, googleKey, perSourceLimit],
   );
 
   return useCachedSearchResult(cacheKey, TTL.search, load, enabled);

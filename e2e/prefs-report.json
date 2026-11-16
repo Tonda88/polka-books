@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-16T19:49:57.596Z",
+  "ranAt": "2026-11-16T20:01:53.695Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -12,12 +12,12 @@
     {
       "name": "Оценка и быстрая реакция сохранены",
       "ok": true,
-      "extra": "Dämonische Mächte: Roman mit Benutzung einer englischen Idee von Hermine Frankenstein. 1"
+      "extra": "Frankenstein oder Der moderne Prometheus"
     },
     {
       "name": "RatingEntity + UserPreferences + AuthorPreference",
       "ok": true,
-      "extra": "оценка 5★/love, сигналов 4, авторов 9"
+      "extra": "оценка 5★/love, сигналов 4, авторов 10"
     },
     {
       "name": "Предпочтения отображаются",
@@ -32,7 +32,7 @@
     {
       "name": "Полки рекомендаций построены",
       "ok": true,
-      "extra": "32 карточек"
+      "extra": "28 карточек"
     },
     {
       "name": "Негатив учтён и сбрасывается вручную",
