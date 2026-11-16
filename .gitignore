@@ -11,3 +11,9 @@ screenshots/99-failure.png
 screenshots/59-catalog-failure.png
 release/
 tmp/
+
+# сборка APK
+android-app/build/
+android-app/release/
+*.keystore
+dist-app/

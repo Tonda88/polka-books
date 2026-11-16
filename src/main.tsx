@@ -14,7 +14,9 @@ createRoot(container).render(
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// В APK приложение открывается с file:// — там service worker недоступен,
+// а офлайн обеспечивается тем, что все файлы уже лежат внутри APK.
+if ('serviceWorker' in navigator && import.meta.env.PROD && window.location.protocol !== 'file:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
