@@ -14,6 +14,8 @@ export interface DownloadManager {
   getLibrary(): NetworkBook[];
   /** Инициализация: читает IndexedDB. Вызывается один раз при старте. */
   init(): Promise<void>;
+  /** Перечитать библиотеку (после импорта файла). */
+  refreshLibrary(): Promise<void>;
   /** Ставит книгу в очередь. Возвращает задачу. */
   enqueue(book: CatalogBook, file: DownloadFile): DownloadTask;
   /** Ставит в очередь первый доступный файл без авторизации. */

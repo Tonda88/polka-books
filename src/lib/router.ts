@@ -16,7 +16,9 @@ export type Screen =
   | 'downloads'
   | 'audio'
   // --- персональные предпочтения ---
-  | 'prefs';
+  | 'prefs'
+  // --- интернет-поиск и импорт ---
+  | 'web';
 
 export interface Route {
   screen: Screen;
@@ -49,6 +51,7 @@ const SCREEN_PATHS: Record<string, Screen> = {
   downloads: 'downloads',
   audio: 'audio',
   prefs: 'prefs',
+  web: 'web',
 };
 
 export function parseRoute(hash: string): Route {
@@ -116,6 +119,8 @@ export function toPath(route: Route): string {
       return `/catalog/book/${encodeURIComponent(route.id ?? '')}`;
     case 'prefs':
       return '/prefs';
+    case 'web':
+      return '/web';
     case 'audio':
       return `/audio/${encodeURIComponent(route.id ?? '')}`;
     case 'book':
@@ -160,6 +165,11 @@ export function openBook(bookId: string): void {
 }
 
 /** Карточка книги из сетевого каталога (id вида `source:externalId`). */
+
+/** Экран «Поиск в интернете». */
+export function openWebSearch(): void {
+  navigate('/web');
+}
 
 /** Экран «Вкус и предпочтения». */
 export function openPreferences(): void {

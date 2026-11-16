@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-16T20:22:50.240Z",
+  "ranAt": "2026-11-16T20:58:12.961Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -45,27 +45,5 @@
       "extra": ""
     }
   ],
-  "pageErrors": [
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT",
-    "Failed to load resource: net::ERR_TIMED_OUT"
-  ]
+  "pageErrors": []
 }

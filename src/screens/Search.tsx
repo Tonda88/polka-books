@@ -13,7 +13,7 @@ import { CATEGORIES, filterByCategory, type CategoryId } from '../catalog/classi
 import { recordSearch } from '../prefs/repository';
 import { resetSourceGuard } from '../catalog/limits';
 import { formatNumber, plural, shortText } from '../lib/format';
-import { getSearchQuery } from '../lib/router';
+import { getSearchQuery, openWebSearch } from '../lib/router';
 import { useAppOptional } from '../lib/store';
 import { CatalogCard } from '../components/CatalogCard';
 import { Icon } from '../components/Icons';
@@ -204,6 +204,14 @@ export function SearchScreen() {
           <p className="page-sub">
             Книги из открытых библиотек и каталогов. Скачивайте свободные файлы и читайте без интернета.
           </p>
+        </div>
+
+        <div className="web-switch">
+          <span className="web-switch__label">Каталог книг</span>
+          <button type="button" className="web-switch__button" onClick={openWebSearch}>
+            <Icon name="compass" size={16} />
+            Поиск в интернете
+          </button>
         </div>
 
         <div className="search-field">

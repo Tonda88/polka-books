@@ -193,6 +193,17 @@ export class DownloadsManager implements DownloadManager {
     return this.initPromise;
   }
 
+  /**
+   * Перечитывает библиотеку из IndexedDB. Нужен после внешнего импорта
+   * (файл добавлен в обход очереди загрузок), чтобы «Мои книги» и читалка
+   * сразу увидели новую запись.
+   */
+  async refreshLibrary(): Promise<void> {
+    this.initPromise = null;
+    await this.init();
+    this.emit();
+  }
+
   private async loadLibrary(): Promise<void> {
     try {
       const rows = await idbListNetBooks<StoredNetBookRecord>();
