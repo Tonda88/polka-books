@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getBook, BOOKS } from '../data/books';
 import type { DownloadProgress } from '../types';
 import { useApp } from '../lib/store';
@@ -12,6 +12,8 @@ import { Icon } from '../components/Icons';
 import { ProgressBar } from '../components/Progress';
 import { Sheet } from '../components/Sheet';
 import { Stars } from '../components/Stars';
+import { RatingWidget } from '../components/RatingWidget';
+import { recordView } from '../prefs/repository';
 
 const REVIEW_NAMES = ['Марина К.', 'Алексей Плещеев', 'Дарья Соколова', 'Никита Орлов', 'Полина Ветрова'];
 const REVIEW_TEXTS = [
@@ -28,6 +30,11 @@ export function BookScreen({ bookId }: { bookId: string }) {
   const { state, download, removeDownload, rateBook, pushToast } = useApp();
   const player = usePlayer();
   const book = getBook(bookId);
+
+  // Просмотр карточки — сигнал интереса для рекомендаций.
+  useEffect(() => {
+    if (book) void recordView(book);
+  }, [book?.id]);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -239,17 +246,12 @@ export function BookScreen({ bookId }: { bookId: string }) {
         </div>
 
         <section className="book-section">
-          <div className="book-section__head">
-            <h2>Ваша оценка</h2>
-            {rating?.liked && <span className="liked-badge">В избранном</span>}
-          </div>
+          <RatingWidget
+            book={book}
+            externalRating={book.rating}
+            externalRatingsCount={book.reviews}
+          />
           <div className="rating-row">
-            <Stars
-              value={rating?.stars ?? 0}
-              size={26}
-              onChange={(stars) => rateBook(book.id, stars, rating?.liked ?? false)}
-              label="Оцените книгу"
-            />
             <button
               type="button"
               className={`like-button ${rating?.liked ? 'is-liked' : ''}`}
@@ -260,7 +262,9 @@ export function BookScreen({ bookId }: { bookId: string }) {
               <span>{rating?.liked ? 'В избранном' : 'В избранное'}</span>
             </button>
           </div>
-          <p className="book-section__hint">Оценки влияют на рекомендации: похожие книги поднимутся выше.</p>
+          <p className="book-section__hint">
+            Оценки и реакции влияют на рекомендации: похожие книги поднимаются выше, а то, что не понравилось, — реже.
+          </p>
         </section>
 
         <section className="book-section">

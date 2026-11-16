@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CatalogBook, DownloadFile } from '../catalog/types';
 import { useBookDetails, useDownloadedBook, useDownloadTasks } from '../catalog/hooks';
 import { verifyBookFiles, type VerifiedBook } from '../catalog/availability';
@@ -13,6 +13,10 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { Icon } from '../components/Icons';
 import { NetworkCover } from '../components/NetworkCover';
 import { ProgressBar } from '../components/Progress';
+import { RatingWidget } from '../components/RatingWidget';
+import { ShelfRow } from '../components/ShelfRow';
+import { useSimilarBooks } from '../prefs/usePreferences';
+import { recordDownload, recordView } from '../prefs/repository';
 import { Stars } from '../components/Stars';
 
 const RUNNING_STATUSES: ReadonlySet<DownloadStatus> = new Set([
@@ -226,6 +230,12 @@ function BookDetailsContent({
   const [verified, setVerified] = useState<VerifiedBook | null>(null);
   const [checkingFiles, setCheckingFiles] = useState(false);
   const bookView: VerifiedBook = verified ?? { ...book, files: book.files };
+  const similar = useSimilarBooks(book, 8);
+
+  // Открытие карточки — сигнал интереса для рекомендаций (слабее скачивания).
+  useEffect(() => {
+    void recordView(book);
+  }, [book.id]);
 
   const audio = book.audio;
   const canListen = Boolean(audio && audio.tracks.length > 0);
@@ -250,6 +260,7 @@ function BookDetailsContent({
         notify('У источника нет файла, который можно скачать', 'error');
         return;
       }
+      void recordDownload(book);
       notify(file ? `Скачиваем ${formatLabel(file.format)}` : 'Загрузка началась');
     } catch {
       notify('Не удалось начать загрузку', 'error');
@@ -347,6 +358,12 @@ function BookDetailsContent({
             </span>
           )}
         </div>
+
+        <RatingWidget
+          book={book}
+          externalRating={book.rating}
+          externalRatingsCount={book.ratingsCount}
+        />
 
         {activeTask && <DownloadProgressBlock task={activeTask} />}
         {failedTask && !activeTask && (
@@ -558,6 +575,14 @@ function BookDetailsContent({
             Если книга защищена DRM или платная — мы не обходим защиту, а отправляем к официальному источнику.
           </p>
         </section>
+
+        {similar.length > 0 && (
+          <ShelfRow
+            title="Похожие книги"
+            subtitle="Подобрано по жанру, темам и вашим оценкам"
+            books={similar}
+          />
+        )}
       </div>
     </div>
   );

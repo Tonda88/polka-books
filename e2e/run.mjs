@@ -212,7 +212,7 @@ async function main() {
     });
 
     await step('Оценка книги влияет на рекомендации', async () => {
-      const stars = page.locator('.rating-row .star-button');
+      const stars = page.locator('.rating-widget__stars .star-button');
       await stars.nth(4).click();
       await page.waitForTimeout(300);
       pass('Оценка 5 звёзд сохранена');

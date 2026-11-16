@@ -1,0 +1,49 @@
+{
+  "ranAt": "2026-11-16T19:49:57.596Z",
+  "url": "http://127.0.0.1:4173",
+  "passed": 8,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Приложение запущено",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "Оценка и быстрая реакция сохранены",
+      "ok": true,
+      "extra": "Dämonische Mächte: Roman mit Benutzung einer englischen Idee von Hermine Frankenstein. 1"
+    },
+    {
+      "name": "RatingEntity + UserPreferences + AuthorPreference",
+      "ok": true,
+      "extra": "оценка 5★/love, сигналов 4, авторов 9"
+    },
+    {
+      "name": "Предпочтения отображаются",
+      "ok": true,
+      "extra": "Вкус и предпочтенияЧто «Полка» запомнила о ваших книгах и как это поправитьСисте"
+    },
+    {
+      "name": "Категории личной библиотеки на месте",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "Полки рекомендаций построены",
+      "ok": true,
+      "extra": "32 карточек"
+    },
+    {
+      "name": "Негатив учтён и сбрасывается вручную",
+      "ok": true,
+      "extra": ""
+    },
+    {
+      "name": "Обучение сброшено, предпочтения очищены",
+      "ok": true,
+      "extra": ""
+    }
+  ],
+  "pageErrors": []
+}

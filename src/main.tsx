@@ -4,6 +4,7 @@ import App from './App';
 import './styles.css';
 import './styles-catalog.css';
 import './styles-library.css';
+import './styles-prefs.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Не найден #root');

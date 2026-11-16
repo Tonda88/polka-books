@@ -17,10 +17,16 @@ import { BookCard } from '../components/BookCard';
 import { BookRow } from '../components/BookRow';
 import { Ring } from '../components/Ring';
 import { Icon } from '../components/Icons';
+import { ShelfRow } from '../components/ShelfRow';
+import { usePreferenceState, useRecommendationShelves } from '../prefs/usePreferences';
+import { openPreferences } from '../lib/router';
 
 export function HomeScreen() {
   const { state, pushToast } = useApp();
   const player = usePlayer();
+  // Персональные полки из реального каталога (по сохранённым предпочтениям).
+  const { bundle: recBundle, loading: recLoading } = useRecommendationShelves({ limit: 8 });
+  const { state: prefState } = usePreferenceState();
   const now = Date.now();
 
   const continueItem = continueReading(state);
@@ -196,6 +202,63 @@ export function HomeScreen() {
           </div>
           <Icon name="right" size={18} className="muted" />
         </button>
+      )}
+
+      {recBundle && recBundle.shelves.find((shelf) => shelf.id === 'forYou') && (
+        <ShelfRow
+          title="Для тебя"
+          subtitle={recBundle.shelves.find((shelf) => shelf.id === 'forYou')?.subtitle}
+          books={recBundle.shelves.find((shelf) => shelf.id === 'forYou')?.books ?? []}
+          actionLabel="Настроить"
+          onAction={openPreferences}
+        />
+      )}
+
+      {(recLoading || (recBundle && recBundle.shelves.length > 0)) && (
+        <div className="home-shelves">
+          <div className="home-shelves__head">
+            <div>
+              <h2 className="section__title">Персональные подборки</h2>
+              <p className="section__sub">
+                {prefState && prefState.prefs.signalCount >= 3
+                  ? 'Из открытых библиотек — по вашим авторам, жанрам и оценкам'
+                  : 'Начните оценивать и скачивать книги — подборки станут личными'}
+              </p>
+            </div>
+            <button type="button" className="link-button" onClick={openPreferences}>
+              Настроить
+            </button>
+          </div>
+
+          {recLoading && !recBundle && (
+            <div className="h-scroll">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="shelf-skeleton" aria-hidden="true" />
+              ))}
+            </div>
+          )}
+
+          {recBundle && (
+            <>
+              {recBundle.coldStart && (
+                <p className="home-shelves__hint">
+                  Холодный старт: показываем популярное. Поставьте 2–3 оценки — и подборки перестроятся под вас.
+                </p>
+              )}
+              {recBundle.shelves
+                .filter((shelf) => shelf.id !== 'forYou')
+                .map((shelf) => (
+                  <ShelfRow
+                    key={shelf.id}
+                    title={shelf.title}
+                    subtitle={shelf.subtitle}
+                    note={shelf.note}
+                    books={shelf.books}
+                  />
+                ))}
+            </>
+          )}
+        </div>
       )}
 
       <section className="section">

@@ -21,6 +21,11 @@ import { NetworkCover } from '../components/NetworkCover';
 import { ProgressBar } from '../components/Progress';
 import { Sheet } from '../components/Sheet';
 import { Icon } from '../components/Icons';
+import { ShelfGrid } from '../components/ShelfRow';
+import { useLibraryCategories, usePreferenceState, useRecommendationShelves } from '../prefs/usePreferences';
+import { profilesByIds } from '../prefs/repository';
+import { openPreferences } from '../lib/router';
+import type { BookProfile, ShelfBook } from '../prefs/types';
 
 type Segment = 'all' | 'downloaded' | 'reading' | 'favorites' | 'history';
 type FormatFilter = 'all' | 'epub' | 'pdf' | 'audio' | 'text' | 'builtin';
@@ -41,6 +46,14 @@ const FORMAT_FILTERS: Array<{ id: Exclude<FormatFilter, 'all'>; label: string }>
   { id: 'text', label: 'Текст' },
   { id: 'builtin', label: 'Встроенные' },
 ];
+
+/** Ключ элемента «Моих книг» → id, под которым книга сохранена в профиле. */
+function catalogIdOfKey(key: string): string {
+  if (key.startsWith('builtin:')) return key.slice('builtin:'.length);
+  if (key.startsWith('network:net:')) return key.slice('network:net:'.length);
+  if (key.startsWith('network:')) return key.slice('network:'.length);
+  return key;
+}
 
 interface MyBookItem {
   key: string;
@@ -269,12 +282,46 @@ export function MyBooksScreen() {
     return result;
   }, [items]);
 
+  // --- персональные категории (система предпочтений) ---
+  const prefCategories = useLibraryCategories();
+  const { state: prefState } = usePreferenceState();
+  const { bundle: recBundle, loading: recLoading } = useRecommendationShelves({ limit: 12 });
+  const [prefCategory, setPrefCategory] = useState<string | null>(null);
+  const [categoryProfiles, setCategoryProfiles] = useState<BookProfile[]>([]);
+
+  const activeCategory = prefCategories.find((category) => category.id === prefCategory) ?? null;
+  const categoryIds = activeCategory ? new Set(activeCategory.bookIds) : null;
+
+  useEffect(() => {
+    let alive = true;
+    if (!activeCategory) {
+      setCategoryProfiles([]);
+      return;
+    }
+    void profilesByIds(activeCategory.bookIds).then((list) => {
+      if (alive) setCategoryProfiles(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [prefCategory]);
+
+  /** Книги категории, которых нет в локальной полке — показываем как карточки. */
+  const categoryExtras = useMemo<ShelfBook[]>(() => {
+    if (!activeCategory) return [];
+    const known = new Set(items.map((item) => catalogIdOfKey(item.key)));
+    return categoryProfiles
+      .filter((profile) => !known.has(profile.id))
+      .map((profile) => ({ book: profile, score: 0, reasons: [], source: 'similar' }));
+  }, [activeCategory, categoryProfiles, items]);
+
   const visible = useMemo(() => {
     let list = items;
     if (segment === 'downloaded') list = list.filter((item) => item.downloaded);
     else if (segment === 'reading') list = list.filter((item) => item.reading);
     else if (segment === 'favorites') list = list.filter((item) => item.favorite);
     else if (segment === 'history') list = list.filter((item) => item.history);
+    if (categoryIds) list = list.filter((item) => categoryIds.has(catalogIdOfKey(item.key)));
     if (format !== 'all') list = list.filter((item) => item.formatGroup === format);
 
     const sorted = [...list];
@@ -385,6 +432,72 @@ export function MyBooksScreen() {
           <span>на устройстве</span>
         </div>
       </div>
+
+      <section className="pref-category-strip" aria-label="Категории личной библиотеки">
+        <div className="section__head">
+          <div>
+            <h2 className="section__title">Категории</h2>
+            <p className="section__sub">
+              {prefState
+                ? `На основе ${prefState.prefs.signalCount} сигналов: оценки, скачивания, чтение и поиск`
+                : 'Любимое, прочитанное и рекомендации — по вашим оценкам'}
+            </p>
+          </div>
+          <button type="button" className="link-button" onClick={openPreferences}>
+            Настроить
+          </button>
+        </div>
+        <div className="chips-row chips-row--wrap">
+          <button
+            type="button"
+            className={`chip ${prefCategory === null ? 'is-active' : ''}`}
+            onClick={() => setPrefCategory(null)}
+          >
+            Все книги
+          </button>
+          {prefCategories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              className={`chip ${prefCategory === category.id ? 'is-active' : ''}`}
+              onClick={() => setPrefCategory(prefCategory === category.id ? null : category.id)}
+              aria-pressed={prefCategory === category.id}
+            >
+              {category.label}
+              {category.count > 0 && <span className="chip__count">{category.count}</span>}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`chip ${prefCategory === 'recommendations' ? 'is-active' : ''}`}
+            onClick={() => setPrefCategory(prefCategory === 'recommendations' ? null : 'recommendations')}
+            aria-pressed={prefCategory === 'recommendations'}
+          >
+            Рекомендации
+          </button>
+        </div>
+        {prefCategory === 'recommendations' && (
+          <div className="mybooks-category-block">
+            {recLoading && !recBundle ? (
+              <p className="section-empty">Подбираем книги…</p>
+            ) : (
+              <ShelfGrid books={recBundle?.shelves.find((shelf) => shelf.id === 'forYou')?.books ?? []} />
+            )}
+            <p className="pref-card__hint">
+              Книги не добавляются автоматически: откройте карточку и скачайте, если понравилась.
+            </p>
+          </div>
+        )}
+        {activeCategory && activeCategory.count === 0 && (
+          <p className="pref-card__hint">Пока пусто — оцените книги в карточке или дочитайте начатую.</p>
+        )}
+        {activeCategory && categoryExtras.length > 0 && (
+          <div className="mybooks-category-block">
+            <p className="pref-card__hint">Ещё книги из этой категории (не скачаны):</p>
+            <ShelfGrid books={categoryExtras} />
+          </div>
+        )}
+      </section>
 
       <div className="mybooks-filters">
         <div className="segmented library-tabs">

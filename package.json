@@ -1,7 +1,7 @@
 {
   "name": "polka-books",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Полка — мобильное PWA для чтения и прослушивания книг офлайн",
   "scripts": {
@@ -18,7 +18,9 @@
     "preview:vite": "vite preview --host 127.0.0.1 --port 4173",
     "catalog": "node e2e/catalog.mjs",
     "check:sources": "node scripts/check-sources.mjs",
-    "check:formats": "node scripts/check-formats.mjs"
+    "check:formats": "node scripts/check-formats.mjs",
+    "check:prefs": "node scripts/check-prefs.mjs",
+    "prefs": "node e2e/prefs.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

@@ -1,0 +1,485 @@
+/* Стили системы предпочтений и оценок — в духе первой версии приложения. */
+
+/* --- оценка книги --- */
+.rating-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.rating-widget--compact {
+  padding: 10px;
+  gap: 8px;
+}
+
+.rating-widget__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rating-widget__title {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.rating-widget__external {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.rating-widget__stars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rating-widget__value {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rating-widget__value.is-empty {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.rating-widget__reset {
+  font-size: 10.5px;
+  margin-left: auto;
+}
+
+.rating-widget__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.reaction__emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.reaction.is-active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent, #ff6b3d) 55%, transparent);
+  background: color-mix(in srgb, var(--accent, #ff6b3d) 14%, transparent);
+}
+
+.rating-widget__hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rating-widget__hint--warn {
+  color: var(--orange, #f0a44a);
+}
+
+/* --- полки рекомендаций --- */
+.shelf-section__note {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin: -4px 0 10px;
+}
+
+.shelf-row {
+  display: flex;
+  gap: 10px;
+}
+
+.shelf-card {
+  flex: 0 0 auto;
+  width: 116px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shelf-card__cover {
+  position: relative;
+  display: block;
+}
+
+.shelf-card__done {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--green, #4ade80);
+  color: #08130b;
+}
+
+.shelf-card__title {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shelf-card__author {
+  font-size: 10px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-card__series {
+  font-size: 9.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-card__reason {
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--accent, #ff6b3d) 80%, var(--text));
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.shelf-grid .shelf-card {
+  width: 100%;
+}
+
+/* --- экран предпочтений --- */
+.prefs-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 30px;
+}
+
+.pref-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.pref-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pref-card__title {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.pref-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  overflow: hidden;
+}
+
+.pref-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent, #ff6b3d), var(--orange, #f0a44a));
+}
+
+.pref-card__hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-top: 8px;
+}
+
+.pref-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mini-button.is-danger {
+  color: #ffb4a8;
+  border-color: color-mix(in srgb, #ff6b3d 55%, transparent);
+}
+
+.pref-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pref-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pref-chip {
+  display: inline-flex;
+}
+
+.pref-chip.is-hidden {
+  opacity: 0.55;
+}
+
+.pref-chip__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pref-chip.is-series .pref-chip__label {
+  cursor: default;
+}
+
+.pref-chip__weight {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.pref-negatives {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+}
+
+.pref-negatives li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11.5px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+.pref-categories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pref-category {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pref-category__count {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.pref-category__label {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.pref-history {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+}
+
+.pref-history li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+.pref-history__book {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.pref-history__title {
+  font-size: 11.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pref-history__meta {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.pref-history__stars {
+  display: inline-flex;
+}
+
+.pref-foot {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  text-align: center;
+  padding: 6px 10px;
+}
+
+@media (max-width: 390px) {
+  .shelf-card {
+    width: 104px;
+  }
+  .pref-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* --- блок персональных подборок на главной --- */
+.home-shelves {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 18px 0 6px;
+}
+
+.home-shelves__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px;
+  margin-bottom: 8px;
+}
+
+.home-shelves__head .section__title {
+  margin: 0;
+}
+
+.home-shelves__hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  padding: 0 16px 8px;
+}
+
+.shelf-skeleton {
+  flex: 0 0 auto;
+  width: 116px;
+  height: 214px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  animation: shelf-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes shelf-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
+
+.home-shelves .shelf-section {
+  padding: 0 16px;
+}
+
+.home-shelves .h-scroll {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+
+/* --- категории в «Моих книгах» --- */
+.pref-category-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 6px;
+  border-radius: 18px;
+  margin: 4px 16px 12px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.pref-category-strip .section__head {
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.mybooks-category-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mybooks-category-block .pref-card__hint {
+  margin: 0;
+}

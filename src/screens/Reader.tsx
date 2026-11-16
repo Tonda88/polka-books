@@ -11,6 +11,8 @@ import { getBook } from '../data/books';
 import { downloads } from '../downloads/manager';
 import type { NetworkBook } from '../downloads/types';
 import { useApp } from '../lib/store';
+import { recordReading } from '../prefs/repository';
+import type { BookProfile } from '../prefs/types';
 import { usePlayer } from '../lib/player';
 import { navigate } from '../lib/router';
 import { clamp, formatMinutes, plural, shortText } from '../lib/format';
@@ -31,6 +33,9 @@ const THEMES = [
 ];
 
 const HEADER_OFFSET = 104;
+
+// Псевдоним, чтобы не тянуть тип в JSX-файл дважды.
+type BookProfileBlock = BookProfile;
 
 export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
   const app = useApp();
@@ -99,6 +104,32 @@ export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
 
   const metaRef = useRef(meta);
   metaRef.current = meta;
+
+  // Профиль книги для системы предпочтений (встроенная или скачанная сетевая).
+  const prefProfile = useMemo<BookProfileBlock | null>(() => {
+    const current = meta;
+    if (!current) return null;
+    const authors = current.author ? current.author.split(',').map((value) => value.trim()).filter(Boolean) : ['Автор неизвестен'];
+    return {
+      id: bookId,
+      sourceId: builtinBook ? 'local' : (netBook?.sourceId ?? 'local'),
+      sourceName: current.sourceName,
+      title: current.title,
+      authors,
+      genres: current.kind === 'text' ? current.chapters.slice(0, 3) : [],
+      subgenres: [],
+      categories: ['fiction'],
+      series: undefined,
+      languages: [],
+      year: undefined,
+      description: undefined,
+      coverUrl: netBook?.coverUrl,
+      formats: builtinBook ? ['epub'] : [netBook?.format ?? 'epub'],
+      pageUrl: current.sourceUrl,
+      firstSeenAt: Date.now(),
+      lastSeenAt: Date.now(),
+    };
+  }, [bookId, meta, builtinBook, netBook]);
 
   const [content, setContent] = useState<BookContent | null>(null);
   const [stats, setStats] = useState<BookStats | null>(null);
@@ -308,6 +339,7 @@ export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
       percent,
       lastMode: mode,
     });
+    if (prefProfile) void recordReading(prefProfile, percent, false);
   }
 
   function scheduleSave(nextChapter: number, nextParagraph: number): void {
@@ -460,6 +492,7 @@ export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
     const lastParagraph = content.chapters[lastChapter].paragraphs.length - 1;
     commitProgress(lastChapter, lastParagraph);
     markFinished(bookId);
+    if (prefProfile) void recordReading(prefProfile, 100, true);
     finishedRef.current = true;
     setFinishOpen(true);
   };

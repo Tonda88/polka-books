@@ -5,7 +5,7 @@ import { usePlayer } from '../lib/player';
 import { favoriteGenres } from '../lib/recommend';
 import { bestStreak, currentStreak, totalStats } from '../lib/goals';
 import { formatMinutes, formatNumber, humanBytes, initials } from '../lib/format';
-import { navigate } from '../lib/router';
+import { navigate, openPreferences } from '../lib/router';
 import { checkSources } from '../catalog/registry';
 import type { SourceHealth } from '../catalog/types';
 import { Sheet } from '../components/Sheet';
@@ -315,6 +315,11 @@ export function ProfileScreen() {
             ))}
           </div>
         )}
+        <button type="button" className="setting-button" onClick={() => openPreferences()}>
+          <Icon name="sparkles" size={18} />
+          Вкус и предпочтения — что запомнила «Полка»
+          <Icon name="right" size={16} className="muted" />
+        </button>
         <button type="button" className="setting-button" onClick={() => navigate('/downloads')}>
           <Icon name="download" size={18} />
           Загрузки и очередь скачивания

@@ -17,6 +17,7 @@ import { BookDetailsScreen } from './screens/BookDetails';
 import { MyBooksScreen } from './screens/MyBooks';
 import { DownloadsScreen } from './screens/DownloadsScreen';
 import { AudioBookScreen } from './screens/AudioBookScreen';
+import { PreferencesScreen } from './screens/Preferences';
 import { downloads } from './downloads/manager';
 import { ensureProxyMode } from './catalog/proxy';
 import { TabBar } from './components/TabBar';
@@ -89,6 +90,7 @@ function Shell() {
       search: 'Поиск книг · Полка',
       details: 'Книга · Полка',
       mybooks: 'Мои книги · Полка',
+      prefs: 'Вкус и предпочтения · Полка',
       downloads: 'Загрузки · Полка',
       audio: 'Аудиокнига · Полка',
     };
@@ -114,6 +116,8 @@ function Shell() {
         return route.id ? <BookDetailsScreen bookId={route.id} /> : <SearchScreen />;
       case 'mybooks':
         return <MyBooksScreen />;
+      case 'prefs':
+        return <PreferencesScreen />;
       case 'downloads':
         return <DownloadsScreen />;
       case 'audio':

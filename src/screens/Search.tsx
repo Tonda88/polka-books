@@ -10,6 +10,7 @@ import {
 } from '../catalog/hooks';
 import { listSources } from '../catalog/registry';
 import { CATEGORIES, filterByCategory, type CategoryId } from '../catalog/classify';
+import { recordSearch } from '../prefs/repository';
 import { formatNumber, plural, shortText } from '../lib/format';
 import { getSearchQuery } from '../lib/router';
 import { useAppOptional } from '../lib/store';
@@ -130,6 +131,15 @@ export function SearchScreen() {
     googleKey,
     limit: 40,
   });
+
+  // История поиска и карточки найденных книг — топливо для рекомендаций.
+  useEffect(() => {
+    if (!search.result || !hasQuery || search.result.books.length === 0) return;
+    const queryText = searchText.trim();
+    if (!queryText) return;
+    void recordSearch(queryText, search.result.books.slice(0, 8));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.result]);
 
   const newest = useDiscover('newest', { enabled: !hasQuery, googleKey, limit: 12 });
   const popular = useDiscover('popular', { enabled: !hasQuery, googleKey, limit: 12 });
