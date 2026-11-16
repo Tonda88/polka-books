@@ -200,3 +200,20 @@ scripts/                    check-sources.mjs, check-formats.mjs, sync-library.p
 - Open Library отдаёт метаданные без прямых файлов; прямые EPUB/PDF ищутся в Internet Archive.
 - Рейтинги/отзывы во встроенном каталоге — демонстрационные; у сетевых книг рейтинг показывается только если источник его отдаёт.
 - Данные хранятся на устройстве; аккаунта и синхронизации между устройствами нет.
+
+---
+
+## Android APK
+
+Готовый APK лежит в релизе: **[Polka-1.0.0.apk](https://github.com/Tonda88/polka-books/releases/download/v1.0.0/Polka-1.0.0.apk)** (1,6 МБ, Android 7.0+).
+
+Как устроен: приложение целиком (HTML/JS/CSS + 14 книг) лежит в `assets/www` внутри APK, а `LocalServer.java` отдаёт его по `http://127.0.0.1:<порт>` — поэтому в WebView работают IndexedDB, `fetch`, CORS и медиа, как в обычном браузере. Там же реализован прокси `/api/fetch` с белым списком доменов для EPUB/PDF из Internet Archive.
+
+Пересобрать APK: нужен JDK 17 и Android SDK (build-tools + platform), Gradle не требуется.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File android-app\build-apk.ps1
+# результат: android-app\release\Polka-1.0.0.apk
+```
+
+Установка: скачайте APK на телефон и откройте (разрешите установку из неизвестных источников). Подпись — самоподписанный ключ `CN=Polka Books`, поэтому Play Protect может показать предупреждение. APK не публиковался в Google Play.
