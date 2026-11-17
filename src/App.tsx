@@ -20,7 +20,6 @@ import { DownloadsScreen } from './screens/DownloadsScreen';
 import { AudioBookScreen } from './screens/AudioBookScreen';
 import { PreferencesScreen } from './screens/Preferences';
 import { AppearanceScreen } from './screens/Appearance';
-import { WebSearchScreen } from './screens/WebSearch';
 import { downloads } from './downloads/manager';
 import { bindSystemAppearance } from './design/runtime';
 import { ensureProxyMode } from './catalog/proxy';
@@ -133,7 +132,7 @@ function Shell() {
       case 'appearance':
         return <AppearanceScreen />;
       case 'web':
-        return <WebSearchScreen />;
+        return <InternetSearchScreen />;
       case 'downloads':
         return <DownloadsScreen />;
       case 'audio':

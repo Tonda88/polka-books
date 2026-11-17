@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-17T12:09:21.054Z",
+  "ranAt": "2026-11-17T18:00:30.609Z",
   "url": "http://127.0.0.1:4173",
   "passed": 7,
   "failed": 0,
@@ -12,12 +12,12 @@
     {
       "name": "Поиск вернул книги с файлами",
       "ok": true,
-      "extra": "6 карточек, 3 файлов · Найдено 6 книг за 20512 мсесть файлы для скачивания"
+      "extra": "5 карточек, 15 файлов · Найдено 5 книг за 23901 мсесть файлы для скачивания"
     },
     {
       "name": "Статусы доступности честные",
       "ok": true,
-      "extra": "доступно: 2, недоступно: 1"
+      "extra": "доступно: 4, недоступно: 11"
     },
     {
       "name": "Файл скачан, проверен и добавлен в библиотеку",
@@ -27,7 +27,7 @@
     {
       "name": "Скачанная из интернета книга читается",
       "ok": true,
-      "extra": "432045 символов"
+      "extra": "31749 символов"
     },
     {
       "name": "Книга на полке «Мои книги»",
@@ -40,5 +40,9 @@
       "extra": ""
     }
   ],
-  "pageErrors": []
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ]
 }

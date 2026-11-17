@@ -7,7 +7,7 @@
  * Новый источник = новый файл-адаптер + одна строка регистрации.
  */
 
-export type BookFormat = 'epub' | 'pdf' | 'txt' | 'fb2' | 'mobi' | 'audio' | 'html' | 'djvu' | 'unknown';
+export type BookFormat = 'epub' | 'pdf' | 'txt' | 'fb2' | 'mobi' | 'azw3' | 'audio' | 'html' | 'djvu' | 'unknown';
 
 /** Доступность книги у источника. */
 export type AccessMode = 'download' | 'borrow' | 'buy' | 'preview' | 'unknown';

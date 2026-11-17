@@ -17,6 +17,9 @@ export interface DirectKeys {
   googleCseKey?: string | null;
   googleCseCx?: string | null;
   bingKey?: string | null;
+  yandexXmlUser?: string | null;
+  yandexXmlKey?: string | null;
+  yandexXmlLr?: string | null;
 }
 
 export interface DirectProviderInfo {
@@ -67,6 +70,14 @@ export function directProviders(keys: DirectKeys): DirectProviderInfo[] {
     { id: 'openalex', name: 'OpenAlex', requiresKey: false, available: true, note: 'Открытый индекс изданий' },
     { id: 'openlibrary', name: 'Open Library', requiresKey: false, available: true, note: 'Открытый каталог' },
     { id: 'gutenberg', name: 'Gutenberg (IA)', requiresKey: false, available: true, note: 'Общественное достояние' },
+    { id: 'librivox', name: 'LibriVox', requiresKey: false, available: true, note: 'Бесплатные аудиокниги' },
+    {
+      id: 'yandex',
+      name: 'Яндекс',
+      requiresKey: true,
+      available: Boolean(keys.yandexXmlUser && keys.yandexXmlKey),
+      note: 'Яндекс XML API (пользовательский ключ)',
+    },
   ];
 }
 
@@ -179,6 +190,71 @@ export async function searchDirect(query: string, keys: DirectKeys, limit = 12):
                 ),
               )
               .filter((item): item is SearchHit => Boolean(item));
+          }
+          case 'librivox': {
+            // LibriVox каталог — официальный API без ключа, CORS разрешён.
+            const url = `https://librivox.org/api/feed/audiobooks?title=${encodeURIComponent(query)}&format=json&limit=10`;
+            const data = await fetchJson<{ books?: Array<Record<string, unknown>> }>(url);
+            const books = data.books ?? [];
+            // Если по названию пусто — пробуем по автору.
+            const list = books.length > 0 ? books : await fetchJson<{ books?: Array<Record<string, unknown>> }>(
+              `https://librivox.org/api/feed/audiobooks?author=${encodeURIComponent(query)}&format=json&limit=10`,
+            ).then((d) => d.books ?? []).catch(() => []);
+            return list
+              .map((item) => {
+                const authors = Array.isArray(item.authors)
+                  ? (item.authors as Array<{ first_name?: string; last_name?: string }>)
+                      .map((a) => [a.first_name, a.last_name].filter(Boolean).join(' '))
+                      .join(', ')
+                  : '';
+                return hit(
+                  'librivox',
+                  typeof item.url_librivox === 'string' ? item.url_librivox
+                    : `https://librivox.org/${encodeURIComponent(String(item.id ?? ''))}`,
+                  typeof item.title === 'string' ? item.title : '',
+                  [authors, item.language, item.num_sections ? `${item.num_sections} глав` : ''].filter(Boolean).join(' · '),
+                  { kind: 'library' },
+                );
+              })
+              .filter((item): item is SearchHit => Boolean(item));
+          }
+          case 'yandex': {
+            // Яндекс XML требует авторизацию — работает с пользовательским ключом.
+            const params = new URLSearchParams({
+              user: keys.yandexXmlUser ?? '',
+              key: keys.yandexXmlKey ?? '',
+              query,
+              lr: keys.yandexXmlLr ?? '213',
+              sortby: 'rlv',
+              filter: 'none',
+              maxpassages: '2',
+              groupby: 'attr=d.mode=deep.groups-on-page=10.docs-in-group=1',
+              page: '0',
+            });
+            // Яндекс XML не имеет CORS — проксируем через локальный /api/page
+            const proxyUrl = `${localBase()}/api/page?url=${encodeURIComponent(`https://yandex.ru/search/xml?${params.toString()}`)}`;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), TIMEOUT);
+            let xml = '';
+            try {
+              const response = await fetch(proxyUrl, { signal: controller.signal, headers: { Accept: 'text/xml, text/html, */*' } });
+              if (response.ok) xml = await response.text();
+            } finally {
+              clearTimeout(timer);
+            }
+            if (!xml) return [];
+            const results: SearchHit[] = [];
+            const docRe = /<doc>([\s\S]*?)<\/doc>/g;
+            let m: RegExpExecArray | null;
+            while ((m = docRe.exec(xml)) !== null) {
+              const block = m[1];
+              const url = /<url>([\s\S]*?)<\/url>/.exec(block)?.[1] ?? '';
+              const title = /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] ?? '';
+              const passages = [...block.matchAll(/<passage>([\s\S]*?)<\/passage>/g)].map((p) => p[1]).join(' ');
+              const r = hit('yandex', url, title, passages.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+              if (r) results.push(r);
+            }
+            return results.slice(0, limit);
           }
           default:
             return [];

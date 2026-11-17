@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-17T16:05:11.732Z",
+  "ranAt": "2026-11-17T17:59:35.439Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -17,7 +17,7 @@
     {
       "name": "RatingEntity + UserPreferences + AuthorPreference",
       "ok": true,
-      "extra": "оценка 5★/love, сигналов 4, авторов 2"
+      "extra": "оценка 5★/love, сигналов 4, авторов 1"
     },
     {
       "name": "Предпочтения отображаются",
@@ -32,7 +32,7 @@
     {
       "name": "Полки рекомендаций построены",
       "ok": true,
-      "extra": "31 карточек"
+      "extra": "23 карточек"
     },
     {
       "name": "Негатив учтён и сбрасывается вручную",
@@ -46,9 +46,11 @@
     }
   ],
   "pageErrors": [
-    "Failed to load resource: net::ERR_FAILED",
-    "Failed to load resource: net::ERR_FAILED",
-    "Failed to load resource: net::ERR_FAILED",
-    "Failed to load resource: net::ERR_FAILED"
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_TIMED_OUT",
+    "Failed to load resource: net::ERR_CONNECTION_CLOSED",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "Failed to load resource: net::ERR_TIMED_OUT"
   ]
 }

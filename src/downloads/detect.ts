@@ -296,9 +296,16 @@ export function detectFormat(bytes: Uint8Array, mime: string, url: string): Dete
     return { format: 'unknown', kind: 'text', mime: declaredMime || 'application/zip', confidence: 'unknown' };
   }
 
-  // MOBI: сигнатура «BOOKMOBI» по смещению 60 (PalmDOC header).
+  // MOBI/AZW3: сигнатура «BOOKMOBI» по смещению 60 (PalmDOC header).
   if (size >= 68 && ascii(bytes, 60, 8) === 'BOOKMOBI') {
-    return { format: 'mobi', kind: 'text', mime: 'application/x-mobipocket-ebook', confidence: 'magic' };
+    // AZW3 отличается от MOBI флагом exthFlags в заголовке — упрощённо определяем по расширению.
+    const isAzw3 = extension === 'azw3';
+    return {
+      format: isAzw3 ? 'azw3' : 'mobi',
+      kind: 'text',
+      mime: isAzw3 ? 'application/vnd.amazon.ebook' : 'application/x-mobipocket-ebook',
+      confidence: 'magic',
+    };
   }
 
   // Аудио.

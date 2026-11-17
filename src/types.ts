@@ -141,6 +141,12 @@ export interface Settings {
   googleCseCx?: string | null;
   /** Ключ Bing Web Search (свой). */
   bingKey?: string | null;
+  /** Яндекс XML API (логин). */
+  yandexXmlUser?: string | null;
+  /** Яндекс XML API (ключ). */
+  yandexXmlKey?: string | null;
+  /** Регион поиска Яндекс (по умолчанию 213 = Москва). */
+  yandexXmlLr?: string | null;
   /** Адрес сервера интернет-поиска (пусто — встроенный режим). */
   searchServerUrl?: string | null;
   /** Внешняя тема интерфейса. */

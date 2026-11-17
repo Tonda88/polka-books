@@ -12,6 +12,9 @@ import type { BookCandidate, BookFile, InternetSearchResult, ProviderStatus } fr
 import { directProviders } from '../discovery/direct';
 import { usePreferences } from '../hooks/usePreferences';
 import { Sheet } from '../components/Sheet';
+import { prepareImport, commitImport } from '../webcatalog/library';
+import { isNativeApp, listPendingImports, readPendingImport, clearPendingImports, subscribeNativeImports } from '../webcatalog/browser';
+import type { BookDraft } from '../webcatalog/types';
 
 const ACCESS_LABELS: Record<string, string> = {
   ok: 'Доступен',
@@ -68,6 +71,15 @@ export function InternetSearchScreen() {
   const [providersOnline, setProvidersOnline] = useState<boolean | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [downloading, setDownloading] = useState<Record<string, { loaded: number; total: number; percent: number }>>({});
+  // --- импорт файлов ---
+  const [draft, setDraft] = useState<BookDraft | null>(null);
+  const [draftBytes, setDraftBytes] = useState<Uint8Array | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [native] = useState(isNativeApp);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [imported, setImported] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<string[]>(readHistory);
   const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
@@ -84,10 +96,82 @@ export function InternetSearchScreen() {
       googleCseKey: settings.googleCseKey ?? null,
       googleCseCx: settings.googleCseCx ?? null,
       bingKey: settings.bingKey ?? null,
+      yandexXmlUser: settings.yandexXmlUser ?? null,
+      yandexXmlKey: settings.yandexXmlKey ?? null,
+      yandexXmlLr: settings.yandexXmlLr ?? null,
     }),
-    [settings.googleCseKey, settings.googleCseCx, settings.bingKey],
+    [settings.googleCseKey, settings.googleCseCx, settings.bingKey, settings.yandexXmlUser, settings.yandexXmlKey, settings.yandexXmlLr],
   );
   const directInfo = useMemo(() => directProviders(keys), [keys]);
+
+  // --- обработчики импорта файлов ---
+  const handleImportFile = async (file: File) => {
+    setImportError(null);
+    setPreparing(true);
+    setDraft(null);
+    setDraftBytes(null);
+    setIsDuplicate(false);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const r = await prepareImport({ kind: 'file', name: file.name, bytes, mime: file.type || undefined, origin: 'Файл с устройства' });
+      if (!r.ok || !r.draft) { setImportError(r.error ?? 'Не удалось распознать книгу'); return; }
+      setDraft(r.draft);
+      setDraftBytes(bytes);
+      setIsDuplicate(Boolean(r.draft.duplicateOf));
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    if (!draft || !draftBytes) return;
+    setSaving(true);
+    setImportError(null);
+    try {
+      const r = await commitImport(draft, draftBytes);
+      if (!r.ok) { setImportError(r.error ?? 'Не удалось добавить книгу'); return; }
+      if (r.duplicateOf) { app.pushToast('Такая книга уже есть в библиотеке — открываем её', 'info'); openMyBooks(); return; }
+      app.pushToast('Книга добавлена в «Мои книги»', 'success');
+      setDraft(null);
+      setDraftBytes(null);
+      openMyBooks();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateDraft = (field: keyof BookDraft, value: string) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      if (field === 'authors') return { ...prev, authors: value.split(',').map((s) => s.trim()).filter(Boolean) };
+      if (field === 'year') return { ...prev, year: value ? Number(value.replace(/\D/g, '').slice(0, 4)) || undefined : undefined };
+      return { ...prev, [field]: value };
+    });
+  };
+
+  // Нативный импорт (SAF / «Поделиться» из браузера Android).
+  useEffect(() => {
+    if (!native) return;
+    const consume = (items: Array<{ id: string; name: string; origin: string }>) => {
+      const first = items[0];
+      if (!first) return;
+      const bytes = readPendingImport(first.id);
+      clearPendingImports();
+      if (!bytes) { app.pushToast('Не удалось прочитать скачанный файл', 'error'); return; }
+      void (async () => {
+        setPreparing(true);
+        try {
+          const r = await prepareImport({ kind: first.origin === 'picker' ? 'file' : 'browser', name: first.name, bytes, origin: first.origin });
+          if (!r.ok || !r.draft) { setImportError(r.error ?? 'Не удалось распознать книгу'); return; }
+          setDraft(r.draft);
+          setDraftBytes(bytes);
+        } finally { setPreparing(false); }
+      })();
+    };
+    consume(listPendingImports());
+    return subscribeNativeImports(consume);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [native]);
 
   const connect = async () => {
     setSearchServer(serverUrl);
@@ -270,10 +354,6 @@ export function InternetSearchScreen() {
           <button type="button" className="btn btn--ghost" onClick={() => navigate('/catalogs')}>
             <Icon name="library" size={18} />
             Каталоги
-          </button>
-          <button type="button" className="btn btn--ghost" onClick={() => navigate('/web')}>
-            <Icon name="compass" size={18} />
-            Браузер
           </button>
         </div>
 
@@ -651,6 +731,34 @@ export function InternetSearchScreen() {
             />
           </label>
 
+          <label className="web-field">
+            <span>Яндекс XML — логин</span>
+            <input
+              value={settings.yandexXmlUser ?? ''}
+              onChange={(event) => app.updateSettings({ yandexXmlUser: event.target.value.trim() || null })}
+              placeholder="login@yandex.ru"
+              autoComplete="off"
+            />
+          </label>
+          <label className="web-field">
+            <span>Яндекс XML — ключ</span>
+            <input
+              type="password"
+              value={settings.yandexXmlKey ?? ''}
+              onChange={(event) => app.updateSettings({ yandexXmlKey: event.target.value.trim() || null })}
+              placeholder="XXXX-XXXX-XXXX-XXXX"
+            />
+          </label>
+          <label className="web-field">
+            <span>Яндекс — регион (lr, по умолчанию 213 = Москва)</span>
+            <input
+              value={settings.yandexXmlLr ?? ''}
+              onChange={(event) => app.updateSettings({ yandexXmlLr: event.target.value.trim() || null })}
+              placeholder="213"
+              inputMode="numeric"
+            />
+          </label>
+
           <div className="discovery-direct-list">
             {directInfo.map((provider) => (
               <span key={provider.id} className={`discovery-chip ${provider.available ? 'is-on' : 'is-key'}`}>
@@ -673,6 +781,52 @@ export function InternetSearchScreen() {
           доступен только за покупку — будет показана причина, а не фиктивная кнопка.
         </p>
       )}
+
+      {/* --- Импорт файла --- */}
+      <div className="web-import-section">
+        <h2 className="section-title">Добавить книгу из файла</h2>
+        <p className="section-sub">EPUB, FB2, PDF, TXT, MOBI — файл останется в приложении и будет доступен офлайн.</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".epub,.fb2,.pdf,.txt,.mobi,.azw3,application/epub+zip,application/pdf,text/plain"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImportFile(f); e.target.value = ''; }}
+          className="web-file-input"
+        />
+        <button type="button" className="btn btn--ghost" onClick={() => fileInputRef.current?.click()} disabled={preparing}>
+          <Icon name="download" size={18} />
+          {preparing ? 'Читаем файл…' : 'Выбрать файл'}
+        </button>
+
+        {importError && <p className="web-error">{importError}</p>}
+
+        {draft && (
+          <div className="web-draft">
+            <div className="web-draft__head">
+              <span className="web-draft__format">{draft.format.toUpperCase()}</span>
+              <span className="web-draft__name">{draft.title || 'Без названия'}</span>
+            </div>
+            {isDuplicate && (
+              <p className="web-draft__duplicate">Уже в библиотеке — книга с таким названием и автором уже есть в «Моих книгах».</p>
+            )}
+            <label className="web-field">
+              <span>Название</span>
+              <input value={draft.title ?? ''} onChange={(e) => updateDraft('title', e.target.value)} />
+            </label>
+            <label className="web-field">
+              <span>Автор</span>
+              <input value={draft.authors.join(', ')} onChange={(e) => updateDraft('authors', e.target.value)} placeholder="Автор через запятую" />
+            </label>
+            <label className="web-field">
+              <span>Год</span>
+              <input value={draft.year?.toString() ?? ''} onChange={(e) => updateDraft('year', e.target.value)} inputMode="numeric" />
+            </label>
+            <button type="button" className="btn btn--primary" onClick={() => void saveDraft()} disabled={saving}>
+              {saving ? 'Сохраняем…' : 'Добавить в библиотеку'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

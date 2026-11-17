@@ -13,7 +13,7 @@ import { CATEGORIES, filterByCategory, type CategoryId } from '../catalog/classi
 import { recordSearch } from '../prefs/repository';
 import { resetSourceGuard } from '../catalog/limits';
 import { formatNumber, plural, shortText } from '../lib/format';
-import { getSearchQuery, openWebSearch } from '../lib/router';
+import { getSearchQuery, openSearch } from '../lib/router';
 import { useAppOptional } from '../lib/store';
 import { CatalogCard } from '../components/CatalogCard';
 import { Icon } from '../components/Icons';
@@ -208,8 +208,8 @@ export function SearchScreen() {
 
         <div className="web-switch">
           <span className="web-switch__label">Каталог книг</span>
-          <button type="button" className="web-switch__button" onClick={openWebSearch}>
-            <Icon name="compass" size={16} />
+          <button type="button" className="web-switch__button" onClick={() => openSearch()}>
+            <Icon name="search" size={16} />
             Поиск в интернете
           </button>
         </div>

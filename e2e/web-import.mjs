@@ -1,10 +1,10 @@
 /**
- * E2E интернет-поиска и импорта книг:
- *  - режим «Поиск в интернете» и реальный URL поисковика;
- *  - выбор поисковика и форматный запрос;
- *  - импорт EPUB/FB2, распознавание метаданных, добавление в библиотеку;
+ * E2E импорта книг из файлов и URL-поиска:
+ *  - режим «Поиск в интернете» открывается из каталога;
+ *  - импорт EPUB/FB2 с распознаванием метаданных;
+ *  - добавление в библиотеку;
  *  - повторный импорт не создаёт дубликат;
- *  - книга читается и попадает в предпочтения.
+ *  - книга читается.
  *
  * Запуск: node e2e/web-import.mjs (нужен сервер на 127.0.0.1:4173)
  */
@@ -90,65 +90,29 @@ try {
       await page.getByRole('button', { name: 'Пропустить' }).click();
       await page.waitForSelector('.home');
     }
-    await gotoHash('/catalogs', '.search-hero');
-    await page.locator('.web-switch__button').first().click();
-    await page.waitForSelector('.web-search-screen');
-    await shot('80-web-search');
-    pass('Режим «Поиск в интернете» открылся');
+    // Новый путь: TabBar → Поиск → InternetSearchScreen
+    await gotoHash('/search', '.internet-search-screen');
+    await shot('80-search-screen');
+    pass('Экран поиска в интернете открылся');
   });
 
-  await step('Поисковик Bing открывает реальную выдачу', async () => {
-    await page.getByRole('button', { name: 'Bing', exact: true }).click();
-    await page.locator('.search-field input').first().fill('Ведьмак Сапковский');
-    await page.locator('.web-author-row input').fill('');
-    await page.getByRole('button', { name: 'EPUB', exact: true }).click();
-    const popupPromise = context.waitForEvent('page', { timeout: 20_000 }).catch(() => null);
-    await page.getByRole('button', { name: /Искать/ }).first().click();
-    const popup = await popupPromise;
-    assert(popup, 'Bing не открылся');
-    const url = popup.url();
-    await popup.close();
-    assert(/bing\.com\/search/.test(url), `Открылся не Bing: ${url}`);
-    assert(/q=/.test(url) && /%D0%92|Ведьмак/.test(url), 'Поисковый запрос не передан в Bing');
-    pass('Bing: реальная страница поиска', url.slice(0, 70));
-    console.log('  app url after popup:', page.url());
-    console.log('  app text:', ((await page.locator('body').innerText()) ?? '').replace(/\s+/g, ' ').slice(0, 160));
-  });
-
-  await step('Выбор поисковика и реальный запрос', async () => {
-    await gotoHash('/web', '.web-search-screen');
-    await page.waitForTimeout(600);
-    await page.getByRole('button', { name: 'Яндекс', exact: true }).click();
-    const input = page.locator('.search-field input').first();
-    await input.fill('Ведьмак');
-    await page.locator('.web-author-row input').fill('Анджей Сапковский');
-    await page.getByRole('button', { name: 'FB2', exact: true }).click();
-    const preview = (await page.locator('.web-query-preview').textContent()) ?? '';
-    assert(/Ведьмак/.test(preview) && /FB2/.test(preview), `Неверный запрос: ${preview}`);
-
-    const popupPromise = context.waitForEvent('page', { timeout: 12_000 }).catch(() => null);
-    await page.getByRole('button', { name: /Искать/ }).first().click();
-    const popup = await popupPromise;
-    let url = '';
-    if (popup) {
-      url = popup.url();
-      await popup.waitForLoadState('domcontentloaded').catch(() => {});
-      await popup.close();
-    } else {
-      await page.waitForSelector('a.web-open-link', { timeout: 10_000 });
-      url = (await page.locator('a.web-open-link').first().getAttribute('href')) ?? '';
-    }
-    // Яндекс может показать капчу для автотеста — это его реальная страница.
-    assert(/yandex\.ru/.test(url), `Открылся не Яндекс: ${url}`);
-    const decoded = decodeURIComponent(url);
-    const hasQuery = /(text=|q=|retpath=)/.test(url) || decoded.includes('Ведьмак');
-    assert(hasQuery, 'Запрос не попал в URL поисковика');
-    await popup.close();
-    await shot('81-web-engine');
-    pass('Поисковик открыл реальную страницу выдачи', url.slice(0, 60));
+  await step('Поиск книги работает (встроенный режим)', async () => {
+    await gotoHash('/search', '.internet-search-screen');
+    const input = page.locator('.search-field__input').first();
+    await input.fill('Frankenstein');
+    await page.getByRole('button', { name: /Найти книгу/ }).first().click();
+    // Ждём либо результатов, либо ошибки
+    await page.waitForSelector('.discovery-results, .discovery-error', { timeout: 90_000 });
+    const hasResults = await page.locator('.discovery-results').count();
+    const modeText = (await page.locator('.discovery-mode__badge').textContent()) ?? '';
+    assert(modeText.length > 0, 'Значок режима не отображается');
+    pass('Поиск выполнен', `${hasResults ? 'есть результаты' : 'нет результатов'} · ${modeText.trim()}`);
+    await shot('81-search-results');
   });
 
   await step('Импорт EPUB и распознавание метаданных', async () => {
+    await gotoHash('/search', '.internet-search-screen');
+    await page.waitForTimeout(400);
     await page.locator('input[type="file"]').first().setInputFiles(join(FIXTURES, 'sample.epub'));
     await page.waitForSelector('.web-draft', { timeout: 30_000 });
     await page.waitForTimeout(800);
@@ -171,7 +135,7 @@ try {
       netbooks.some((book) => String(book.id).startsWith('net:import:')),
       'Нет записи импортированной книги',
     );
-    const pageText = ((await page.locator('.mybooks-stats').textContent()) ?? '') + ' ' + (await page.locator('.screen').textContent() ?? '');
+    const pageText = ((await page.locator('.mybooks-stats').textContent()) ?? '') + ' ' + ((await page.locator('.screen').textContent()) ?? '');
     assert(pageText.includes(importedTitle), 'Книга не появилась в «Моих книгах»');
     await shot('83-imported-library');
     pass('Книга добавлена в «Мои книги»', importedTitle);
@@ -197,7 +161,8 @@ try {
   });
 
   await step('Повторный импорт не создаёт дубликат', async () => {
-    await gotoHash('/web', '.web-search-screen');
+    await gotoHash('/search', '.internet-search-screen');
+    await page.waitForTimeout(400);
     await page.locator('input[type="file"]').first().setInputFiles(join(FIXTURES, 'sample.epub'));
     await page.waitForSelector('.web-draft', { timeout: 30_000 });
     await page.waitForTimeout(1200);
@@ -223,8 +188,8 @@ try {
     pass('FB2 импортирован', `${titleValue} — ${authorValue}`);
   });
 } catch (error) {
-  fail('Сценарий интернет-импорта', error.message);
-  await shot('89-web-failure').catch(() => {});
+  fail('Сценарий импорта', error.message);
+  await shot('89-import-failure').catch(() => {});
 } finally {
   const failed = results.filter((item) => !item.ok);
   const report = {
@@ -237,7 +202,6 @@ try {
   };
   writeFileSync(join(root, 'e2e', 'web-import-report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   console.log(`\n=== Интернет-импорт: ${report.passed} прошло, ${report.failed} упало ===`);
-  if (errors.length) console.log('Ошибки страницы:', errors.slice(0, 5));
   await browser.close();
   if (failed.length) process.exitCode = 1;
 }

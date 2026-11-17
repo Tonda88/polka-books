@@ -94,6 +94,7 @@ export const FORMAT_LABEL: Record<string, string> = {
   txt: 'TXT',
   fb2: 'FB2',
   mobi: 'MOBI',
+  azw3: 'AZW3',
   audio: 'MP3',
   html: 'HTML',
   djvu: 'DJVU',

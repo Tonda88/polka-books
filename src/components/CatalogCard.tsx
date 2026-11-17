@@ -13,6 +13,7 @@ const FORMAT_LABELS: Record<BookFormat, string> = {
   txt: 'TXT',
   fb2: 'FB2',
   mobi: 'MOBI',
+  azw3: 'AZW3',
   audio: 'Аудио',
   html: 'HTML',
   djvu: 'DJVU',

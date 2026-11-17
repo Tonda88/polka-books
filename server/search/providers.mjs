@@ -172,7 +172,35 @@ const searx = {
 };
 
 
-const crossref = {
+const librivox = {
+  id: 'librivox',
+  name: 'LibriVox',
+  requiresKey: false,
+  note: 'Бесплатные аудиокниги — официальный JSON API, без ключа',
+  available: () => true,
+  async search(query, limit) {
+    // Пробуем по названию, потом по автору если пусто.
+    async function fetch_lv(params) {
+      const url = `https://librivox.org/api/feed/audiobooks?${params}&format=json&limit=${Math.min(limit ?? 10, 20)}`;
+      const data = await fetchJson(url, { timeout: 12_000 });
+      return data.books ?? [];
+    }
+    let books = await fetch_lv(`title=${encodeURIComponent(query)}`);
+    if (books.length === 0) books = await fetch_lv(`author=${encodeURIComponent(query)}`);
+    return books.map((item) => {
+      const authors = Array.isArray(item.authors)
+        ? item.authors.map((a) => [a.first_name, a.last_name].filter(Boolean).join(' ')).join(', ')
+        : '';
+      return normalizeResult('librivox', {
+        url: item.url_librivox ?? `https://librivox.org/${item.id ?? ''}`,
+        title: item.title ?? '',
+        snippet: [authors, item.language, item.num_sections ? `${item.num_sections} глав` : ''].filter(Boolean).join(' · '),
+      });
+    }).filter(Boolean);
+  },
+};
+
+
   id: 'crossref',
   name: 'Crossref',
   requiresKey: false,
@@ -288,7 +316,7 @@ const gutenberg = {
   },
 };
 
-export const PROVIDERS = { marginalia, crossref, openalex, openlibrary, gutenberg, google, bing, brave, yandex, searx };
+export const PROVIDERS = { marginalia, crossref, openalex, openlibrary, gutenberg, librivox, google, bing, brave, yandex, searx };
 
 export function providerStatus() {
   return Object.values(PROVIDERS).map((provider) => ({
@@ -306,8 +334,9 @@ function relevance(query, result) {
   let score = 0;
   for (const token of tokens) if (haystack.includes(token)) score += 1;
   // Книжные домены и явные файлы чуть важнее.
-  if (/\.(epub|fb2|pdf|txt|mobi)(\?|$)/i.test(result.url)) score += 2;
-  if (/(standardebooks|gutenberg|archive\.org|litres|flibusta|royallib|bookz|knijky|lib\.ru|wikisource)/i.test(result.url)) {
+  if (/\.(epub|fb2|pdf|txt|mobi|azw3)(\?|$)/i.test(result.url)) score += 2;
+  if (/\.(mp3|m4a|ogg|aac|opus)(\?|$)/i.test(result.url)) score += 1.5;
+  if (/(standardebooks|gutenberg|archive\.org|litres|flibusta|royallib|bookz|knijky|lib\.ru|wikisource|librivox\.org)/i.test(result.url)) {
     score += 1.5;
   }
   // Открытые библиотеки с разрешёнными файлами — выше чисто метаданных.

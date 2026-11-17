@@ -424,8 +424,8 @@ try {
     });
     await page.waitForSelector('.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
-    await input.fill('pride and prejudice');
-    await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });
+    await input.fill('Frankenstein');
+    await page.waitForSelector('.catalog-list .catalog-card', { timeout: 60_000 });
     await page.waitForTimeout(1500);
     const cards = page.locator('.catalog-list .catalog-card');
     const total = await cards.count();
