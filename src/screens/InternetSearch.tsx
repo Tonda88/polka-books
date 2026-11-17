@@ -5,9 +5,13 @@ import { Icon } from '../components/Icons';
 import { formatNumber } from '../lib/format';
 import { apiBase, getSearchServer, setSearchServer } from '../discovery/config';
 import { fetchProviders } from '../discovery/api';
+import { getCustomSearxInstances, setCustomSearxInstances } from '../discovery/searx';
 import { internetSearch } from '../discovery/engine';
 import { downloadBookFile } from '../discovery/download';
 import type { BookCandidate, BookFile, InternetSearchResult, ProviderStatus } from '../discovery/types';
+import { directProviders } from '../discovery/direct';
+import { usePreferences } from '../hooks/usePreferences';
+import { Sheet } from '../components/Sheet';
 
 const ACCESS_LABELS: Record<string, string> = {
   ok: 'Доступен',
@@ -18,6 +22,28 @@ const ACCESS_LABELS: Record<string, string> = {
   unavailable: 'Недоступен',
   invalid: 'Неверная ссылка',
 };
+
+const HISTORY_KEY = 'polka:search-history:v1';
+const FORMAT_FILTERS = ['all', 'epub', 'fb2', 'pdf', 'txt', 'mobi'] as const;
+type FormatFilter = (typeof FORMAT_FILTERS)[number];
+type ResultSort = 'relevance' | 'downloadable' | 'title' | 'year';
+
+function readHistory(): string[] {
+  try {
+    const value = localStorage.getItem(HISTORY_KEY);
+    return value ? (JSON.parse(value) as string[]).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeHistory(items: string[]): void {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 8)));
+  } catch {
+    /* localStorage недоступен */
+  }
+}
 
 function humanBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return '';
@@ -43,7 +69,25 @@ export function InternetSearchScreen() {
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [downloading, setDownloading] = useState<Record<string, { loaded: number; total: number; percent: number }>>({});
   const [imported, setImported] = useState<Record<string, string>>({});
+  const [history, setHistory] = useState<string[]>(readHistory);
+  const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
+  const [genreFilter, setGenreFilter] = useState('all');
+  const [sortMode, setSortMode] = useState<ResultSort>('relevance');
+  const [customSearx, setCustomSearx] = useState(() => getCustomSearxInstances().join('\n'));
   const abortRef = useRef<AbortController | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settings = app.state.settings;
+  const preferences = usePreferences();
+  const [activeSearx, setActiveSearx] = useState<Array<{ url: string; success: number; checkedAt: number }>>([]);
+  const keys = useMemo(
+    () => ({
+      googleCseKey: settings.googleCseKey ?? null,
+      googleCseCx: settings.googleCseCx ?? null,
+      bingKey: settings.bingKey ?? null,
+    }),
+    [settings.googleCseKey, settings.googleCseCx, settings.bingKey],
+  );
+  const directInfo = useMemo(() => directProviders(keys), [keys]);
 
   const connect = async () => {
     setSearchServer(serverUrl);
@@ -58,9 +102,18 @@ export function InternetSearchScreen() {
     }
   };
 
-  const run = async () => {
-    const clean = query.trim();
+  const run = async (value?: string) => {
+    const clean = (value ?? query).trim();
     if (!clean) return;
+    setQuery(clean);
+    setHistory((previous) => {
+      const next = [clean, ...previous.filter((item) => item !== clean)].slice(0, 8);
+      writeHistory(next);
+      return next;
+    });
+    setFormatFilter('all');
+    setGenreFilter('all');
+    setSortMode('relevance');
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -72,14 +125,17 @@ export function InternetSearchScreen() {
     try {
       const answer = await internetSearch(clean, {
         signal: controller.signal,
+        keys,
+        forceDirect: preferences.mode === 'device',
         onProgress: (label, value) => {
           setStage(label);
           setPercent(value);
         },
       });
       setResult(answer);
-      setProvidersOnline(true);
+      setProvidersOnline(answer.mode === 'server');
       setProviders(answer.providers);
+      setActiveSearx(answer.searxInstances ?? []);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Поиск не удался';
       setError(message);
@@ -112,12 +168,15 @@ export function InternetSearchScreen() {
   };
 
   useEffect(() => {
+    // Адрес сервера из настроек профиля имеет приоритет над локальным.
+    if (settings.searchServerUrl) setSearchServer(settings.searchServerUrl);
     void (async () => {
       const status = await fetchProviders();
       setProvidersOnline(status.online);
       setProviders(status.providers);
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.searchServerUrl]);
 
   const availableProviders = providers.filter((provider) => provider.available);
   const keyProviders = providers.filter((provider) => provider.requiresKey && !provider.available);
@@ -126,10 +185,47 @@ export function InternetSearchScreen() {
   );
 
   const serverHint = useMemo(() => {
-    if (providersOnline === false) return 'Сервер не найден';
+    if (preferences.mode === 'device') {
+      const free = directInfo.filter((provider) => provider.available).length + 1;
+      return `Встроенный поиск · без сервера · ${free} бесплатных источников`;
+    }
+    if (providersOnline === false) return 'Встроенный поиск · серверный агрегатор недоступен';
     if (providersOnline === null) return 'Проверяем сервер…';
-    return `Сервер доступен · ${availableProviders.length} из ${providers.length} провайдеров`;
-  }, [providersOnline, availableProviders.length, providers.length]);
+    return `Серверный агрегатор · ${availableProviders.length} из ${providers.length} провайдеров`;
+  }, [preferences.mode, providersOnline, availableProviders.length, providers.length, directInfo]);
+
+  const resultFormats = useMemo(() => {
+    const present = new Set<string>();
+    for (const book of result?.books ?? []) for (const file of book.files) present.add(file.format.toLowerCase());
+    return FORMAT_FILTERS.filter((item) => item === 'all' || present.has(item));
+  }, [result]);
+
+  const resultGenres = useMemo(() => {
+    const present = new Set<string>();
+    for (const book of result?.books ?? []) for (const genre of book.genres ?? []) present.add(genre);
+    return [...present];
+  }, [result]);
+
+  const visibleBooks = useMemo(() => {
+    let list = result?.books ?? [];
+    if (formatFilter !== 'all') list = list.filter((book) => book.files.some((file) => file.format.toLowerCase() === formatFilter));
+    if (genreFilter !== 'all') list = list.filter((book) => book.genres?.includes(genreFilter));
+    const sorted = [...list];
+    switch (sortMode) {
+      case 'downloadable':
+        sorted.sort((a, b) => Number(b.downloadable) - Number(a.downloadable));
+        break;
+      case 'title':
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'ru'));
+        break;
+      case 'year':
+        sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+        break;
+      default:
+        break;
+    }
+    return sorted;
+  }, [result, formatFilter, genreFilter, sortMode]);
 
   return (
     <div className="screen internet-search-screen">
@@ -137,7 +233,8 @@ export function InternetSearchScreen() {
         <div className="page-head">
           <h1 className="page-title">Поиск книг в интернете</h1>
           <p className="page-sub">
-            Ищем по всему вебу через поисковые API, анализируем страницы и находим файлы EPUB, FB2, PDF, TXT, MOBI.
+            Ищем по всему вебу через SearXNG, открытые поисковые API и книжные каталоги. Анализируем страницы и находим
+            файлы EPUB, FB2, PDF, TXT, MOBI.
           </p>
         </div>
 
@@ -145,6 +242,7 @@ export function InternetSearchScreen() {
           <Icon name="search" size={19} className="search-field__icon" />
           <input
             type="search"
+            className="search-field__input"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -155,6 +253,15 @@ export function InternetSearchScreen() {
             enterKeyHint="search"
           />
         </div>
+        <div className="discovery-mode">
+          <span className={`discovery-mode__badge ${result?.mode === 'server' ? 'is-server' : 'is-direct'}`}>
+            {result?.mode === 'server' ? 'Серверный агрегатор' : 'Встроенный поиск · Android'}
+          </span>
+          <button type="button" className="link-button" onClick={() => setSettingsOpen(true)}>
+            Источники поиска
+          </button>
+        </div>
+
         <div className="discovery-actions">
           <button type="button" className="btn btn--primary" onClick={() => void run()} disabled={loading || !query.trim()}>
             <Icon name="search" size={18} />
@@ -170,22 +277,79 @@ export function InternetSearchScreen() {
           </button>
         </div>
 
+        {history.length > 0 && !loading && !result && (
+          <div className="search-history">
+            <div className="search-history__head">
+              <span>История запросов</span>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setHistory([]);
+                  writeHistory([]);
+                }}
+              >
+                Очистить
+              </button>
+            </div>
+            <div className="chips-row chips-row--wrap">
+              {history.map((item) => (
+                <button key={item} type="button" className="chip" onClick={() => void run(item)}>
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="discovery-providers">
-          <span className={`status-dot ${providersOnline ? 'is-online' : 'is-offline'}`} />
+          <span className={`status-dot ${preferences.mode === 'device' || providersOnline ? 'is-online' : 'is-offline'}`} />
           <span className="discovery-providers__label">{serverHint}</span>
-          {availableProviders.slice(0, 6).map((provider) => (
-            <span key={provider.id} className="discovery-chip is-on" title={provider.note}>
-              {provider.name}
-            </span>
-          ))}
-          {keyProviders.map((provider) => (
-            <span key={provider.id} className="discovery-chip is-key" title={`${provider.note}: ключ задаётся на сервере`}>
-              {provider.name} · ключ
-            </span>
-          ))}
+          {preferences.mode === 'device' ? (
+            <>
+              <span className="discovery-chip is-on" title="Публичные узлы из официального реестра SearXNG">
+                SearXNG
+              </span>
+              {directInfo.map((provider) => (
+                <span
+                  key={provider.id}
+                  className={`discovery-chip ${provider.available ? 'is-on' : 'is-key'}`}
+                  title={provider.note}
+                >
+                  {provider.name}
+                  {provider.available ? '' : ' · ключ'}
+                </span>
+              ))}
+            </>
+          ) : (
+            <>
+              {availableProviders.slice(0, 6).map((provider) => (
+                <span key={provider.id} className="discovery-chip is-on" title={provider.note}>
+                  {provider.name}
+                </span>
+              ))}
+              {keyProviders.map((provider) => (
+                <span key={provider.id} className="discovery-chip is-key" title={`${provider.note}: ключ задаётся на сервере`}>
+                  {provider.name} · ключ
+                </span>
+              ))}
+            </>
+          )}
         </div>
 
-        {providersOnline === false && (
+        {preferences.mode === 'device' && !result && (
+          <div className="discovery-setup discovery-setup--direct">
+            <p>
+              <strong>Без компьютера и обязательного сервера.</strong> Используем открытые поисковые API и публичные SearXNG-узлы из официального реестра. Узлы проверяются, кэшируются и переключаются автоматически.
+              {activeSearx.length > 0 && <> Сейчас доступны SearXNG: {activeSearx.map((item) => new URL(item.url).hostname).join(', ')}.</>}
+            </p>
+            <p className="discovery-setup__hint">
+              Бесплатные публичные узлы могут временно ограничивать запросы. Если все недоступны, продолжают работать Crossref, OpenAlex и книжные API. Безопасный парсинг выдачи Google/Яндекса не используется.
+            </p>
+          </div>
+        )}
+
+        {providersOnline === false && preferences.mode !== 'device' && (
           <div className="discovery-setup">
             <p>
               Для веб-поиска нужен сервер с ключами поисковых API — ключи нельзя держать в APK. Запустите
@@ -248,12 +412,82 @@ export function InternetSearchScreen() {
             )}
           </div>
 
+          {(resultFormats.length > 1 || resultGenres.length > 0) && (
+            <div className="discovery-filters">
+              {resultGenres.length > 0 && (
+                <div className="chips-row chips-row--wrap">
+                  <button
+                    type="button"
+                    className={`chip ${genreFilter === 'all' ? 'is-active' : ''}`}
+                    onClick={() => setGenreFilter('all')}
+                  >
+                    Все жанры
+                  </button>
+                  {resultGenres.map((genre) => (
+                    <button
+                      key={genre}
+                      type="button"
+                      className={`chip ${genreFilter === genre ? 'is-active' : ''}`}
+                      onClick={() => setGenreFilter(genreFilter === genre ? 'all' : genre)}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="discovery-filters__row">
+                <div className="chips-row chips-row--wrap">
+                  {resultFormats.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`chip ${formatFilter === item ? 'is-active' : ''}`}
+                      onClick={() => setFormatFilter(item)}
+                    >
+                      {item === 'all' ? 'Все форматы' : item.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <label className="discovery-sort">
+                  <span>Сортировка</span>
+                  <select
+                    className="select"
+                    value={sortMode}
+                    onChange={(event) => setSortMode(event.target.value as ResultSort)}
+                  >
+                    <option value="relevance">По релевантности</option>
+                    <option value="downloadable">Сначала с файлами</option>
+                    <option value="title">По названию</option>
+                    <option value="year">По году</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {visibleBooks.length === 0 && result.books.length > 0 && (
+            <p className="section-empty">
+              Нет книг с такими фильтрами.{' '}
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setFormatFilter('all');
+                  setGenreFilter('all');
+                  setSortMode('relevance');
+                }}
+              >
+                Сбросить
+              </button>
+            </p>
+          )}
+
           {result.books.length === 0 && (
             <p className="section-empty">Ничего не нашли. Попробуйте другое название или уточните автора.</p>
           )}
 
           <div className="discovery-list">
-            {result.books.map((book) => {
+            {visibleBooks.map((book) => {
               const localId = imported[book.id];
               return (
                 <article className="discovery-card" key={book.id}>
@@ -335,6 +569,103 @@ export function InternetSearchScreen() {
           </div>
         </div>
       )}
+
+
+      <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Источники поиска" subtitle="Ключи хранятся только на этом устройстве" full>
+        <div className="discovery-settings">
+          <label className="web-field">
+            <span>Адрес сервера поиска (необязательно)</span>
+            <input
+              value={serverUrl}
+              onChange={(event) => setServerUrl(event.target.value)}
+              placeholder="http://192.168.0.10:4173"
+              inputMode="url"
+            />
+          </label>
+          <button
+            type="button"
+            className="mini-button"
+            onClick={() => {
+              void connect();
+              app.updateSettings({ searchServerUrl: serverUrl.trim() || null });
+              setSettingsOpen(false);
+            }}
+          >
+            Сохранить адрес и проверить
+          </button>
+
+          <label className="web-field">
+            <span>Свои экземпляры SearXNG (по одному в строке)</span>
+            <textarea
+              rows={2}
+              value={customSearx}
+              onChange={(event) => setCustomSearx(event.target.value)}
+              placeholder="https://searx.example.com"
+              spellCheck={false}
+            />
+          </label>
+          <button
+            type="button"
+            className="mini-button"
+            onClick={() => {
+              const saved = setCustomSearxInstances(customSearx);
+              setCustomSearx(saved.join('\n'));
+              app.pushToast(
+                saved.length > 0 ? `Сохранено экземпляров: ${saved.length}` : 'Свои экземпляры удалены',
+                'success',
+              );
+            }}
+          >
+            Сохранить экземпляры SearXNG
+          </button>
+
+          <p className="pref-card__hint">
+            Без сервера работают SearXNG (публичные узлы из официального реестра), Crossref, OpenAlex, Open Library и
+            Gutenberg. Google и Bing включаются своими ключами — они сохраняются в памяти приложения и не попадают в код.
+          </p>
+
+          <label className="web-field">
+            <span>Google Custom Search API key</span>
+            <input
+              type="password"
+              value={settings.googleCseKey ?? ''}
+              onChange={(event) => app.updateSettings({ googleCseKey: event.target.value.trim() || null })}
+              placeholder="AIza…"
+            />
+          </label>
+          <label className="web-field">
+            <span>Google CSE идентификатор (cx)</span>
+            <input
+              value={settings.googleCseCx ?? ''}
+              onChange={(event) => app.updateSettings({ googleCseCx: event.target.value.trim() || null })}
+              placeholder="0123456789:abcdefghijk"
+            />
+          </label>
+          <label className="web-field">
+            <span>Bing Web Search key</span>
+            <input
+              type="password"
+              value={settings.bingKey ?? ''}
+              onChange={(event) => app.updateSettings({ bingKey: event.target.value.trim() || null })}
+              placeholder="32-символьный ключ Azure"
+            />
+          </label>
+
+          <div className="discovery-direct-list">
+            {directInfo.map((provider) => (
+              <span key={provider.id} className={`discovery-chip ${provider.available ? 'is-on' : 'is-key'}`}>
+                {provider.name}
+                {provider.available ? '' : ' · нужен ключ'}
+              </span>
+            ))}
+          </div>
+
+          <p className="pref-card__hint">
+            Ключи Google CSE: console.cloud.google.com → Custom Search API. Идентификатор cx: programmablesearchengine.google.com.
+            Bing: portal.azure.com → Bing Search.
+          </p>
+        </div>
+      </Sheet>
 
       {!result && !loading && providersOnline && (
         <p className="discovery-legal">

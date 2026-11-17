@@ -1,8 +1,8 @@
 {
-  "ranAt": "2026-11-16T21:32:06.768Z",
+  "ranAt": "2026-11-16T22:33:10.873Z",
   "url": "http://127.0.0.1:4173",
-  "passed": 8,
-  "failed": 0,
+  "passed": 3,
+  "failed": 1,
   "results": [
     {
       "name": "Режим «Поиск в интернете» открылся",
@@ -17,32 +17,12 @@
     {
       "name": "Поисковик открыл реальную страницу выдачи",
       "ok": true,
-      "extra": "https://yandex.ru/showcaptcha?cc=1&form-fb-hint=2.1.8e7520c6"
+      "extra": "https://yandex.ru/showcaptcha?cc=1&form-fb-hint=2.1.f440a9cd"
     },
     {
-      "name": "Метаданные распознаны",
-      "ok": true,
-      "extra": "«Тестовая книга»"
-    },
-    {
-      "name": "Книга добавлена в «Мои книги»",
-      "ok": true,
-      "extra": "Тестовая книга"
-    },
-    {
-      "name": "Импортированная книга читается",
-      "ok": true,
-      "extra": "159 символов"
-    },
-    {
-      "name": "Дубликат распознан без создания копии",
-      "ok": true,
-      "extra": "1 книг в базе"
-    },
-    {
-      "name": "FB2 импортирован",
-      "ok": true,
-      "extra": "Тестовая FB2 — Иван Тестов"
+      "name": "Сценарий интернет-импорта",
+      "ok": false,
+      "error": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.web-draft') to be visible\u001b[22m\n"
     }
   ],
   "pageErrors": []

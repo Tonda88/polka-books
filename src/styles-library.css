@@ -1,4 +1,4 @@
-/* ========================================================================== */
+﻿/* ========================================================================== */
 /* Мои книги, Загрузки и аудиоплеер — стили экранов                             */
 /* Использует переменные из styles.css. Подключается после базовых стилей.     */
 /* ========================================================================== */
@@ -91,7 +91,7 @@
 }
 
 .chip.is-active .chip__count {
-  background: rgba(255, 107, 61, 0.16);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: #ffcbb8;
 }
 
@@ -264,10 +264,10 @@
 }
 
 .mini-button--primary {
-  background: linear-gradient(135deg, #ff8149, #ff5b32);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
   border-color: transparent;
-  color: #200d06;
-  box-shadow: 0 8px 18px rgba(255, 91, 50, 0.22);
+  color: #1b1910;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .lib-card__more {
@@ -508,7 +508,7 @@
   padding: 2px 18px 18px;
   border-radius: 0 0 26px 26px;
   background:
-    radial-gradient(120% 100% at 85% 0%, rgba(255, 107, 61, 0.18), transparent 60%),
+    radial-gradient(120% 100% at 85% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
     linear-gradient(170deg, #1a1820, #101017);
   border-bottom: 1px solid var(--border);
 }
@@ -685,8 +685,8 @@
 }
 
 .audio-track.is-current {
-  border-color: rgba(255, 107, 61, 0.45);
-  background: rgba(255, 107, 61, 0.08);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .audio-track.is-playing {
@@ -1030,4 +1030,46 @@
     border: 1px solid var(--border-strong);
     padding-bottom: 9px;
   }
+}
+
+/* --- поиск по собственной библиотеке --- */
+.mybooks-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.mybooks-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.mybooks-search input::placeholder {
+  color: var(--muted-2);
+}
+
+.mybooks-filters .library-tabs {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mybooks-filters .library-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mybooks-filters .segmented__item {
+  flex: 0 0 auto;
 }

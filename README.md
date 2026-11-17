@@ -49,7 +49,7 @@
 ### Безопасность и правила
 
 - Никакого обхода DRM, платного доступа и авторизации: если книга платная или защищена — приложение отправляет к официальному источнику (`buy`/`borrow`/`preview` + ссылка).
-- Прокси ограничен белым списком доменов (защита от SSRF), лимитом размера и таймаутом.
+- Прокси ограничен по размеру и таймауту. В веб-сервере — белый список доменов, в APK — любые публичные HTTP(S)-хосты с блокировкой приватных адресов (защита от SSRF).
 - Соблюдаются лимиты API: 20–30 записей на источник на запрос, кэширование, повторы с задержкой.
 
 ---
@@ -429,8 +429,11 @@ scripts/                    check-sources.mjs, check-formats.mjs, sync-library.p
 | `pnpm check:formats` | распознавание форматов, разбор EPUB/FB2/TXT, защита от битых файлов | 48/48 |
 | `pnpm e2e` | онбординг, цели, скачивание встроенных книг, большая книга, поэзия, офлайн, аудио | 19/19 |
 | `pnpm catalog` | витрина из сети, поиск по источникам, скачивание EPUB, чтение, офлайн, удаление, LibriVox | 9/9 |
+| `node e2e/prefs.mjs` | оценки 1–5★, реакции, обучение предпочтений, подборки, сброс | 8/8 |
+| `node e2e/appearance.mjs` | пять тем, светлый/тёмный/системный режим, акцент, текст, плотность, сохранение | 15/15 |
+| `node e2e/discovery-direct.mjs` | встроенный поиск без сервера, анализ страниц, скачивание, возврат в серверный режим | 5/5 |
 
-Отчёты: `e2e/report.json`, `e2e/catalog-report.json`, `content/sync-report.txt`.
+Отчёты: `e2e/report.json`, `e2e/catalog-report.json`, `e2e/prefs-report.json`, `e2e/appearance-report.json`, `e2e/discovery-direct-report.json`, `content/sync-report.txt`.
 
 ---
 
@@ -450,15 +453,15 @@ scripts/                    check-sources.mjs, check-formats.mjs, sync-library.p
 
 ## Android APK
 
-Готовый APK лежит в релизе: **[Polka-1.4.0.apk](https://github.com/Tonda88/polka-books/releases/download/v1.4.0/Polka-1.4.0.apk)** (1,7 МБ, Android 7.0+).
+Готовый APK лежит в релизе: **[Polka-1.5.0.apk](https://github.com/Tonda88/polka-books/releases/download/v1.5.0/Polka-1.5.0.apk)** (Android 7.0+).
 
-Как устроен: приложение целиком (HTML/JS/CSS + 14 книг) лежит в `assets/www` внутри APK, а `LocalServer.java` отдаёт его по `http://127.0.0.1:<порт>` — поэтому в WebView работают IndexedDB, `fetch`, CORS и медиа, как в обычном браузере. Там же реализован прокси `/api/fetch` с белым списком доменов для EPUB/PDF из Internet Archive.
+Как устроен: приложение целиком (HTML/JS/CSS + 14 книг) лежит в `assets/www` внутри APK, а `LocalServer.java` отдаёт его по `http://127.0.0.1:<порт>` — поэтому в WebView работают IndexedDB, `fetch`, CORS и медиа, как в обычном браузере. Там же реализован прокси `/api/fetch` для прямых EPUB/PDF: разрешены любые публичные HTTP(S)-хосты, приватные и внутренние адреса заблокированы (защита от SSRF).
 
 Пересобрать APK: нужен JDK 17 и Android SDK (build-tools + platform), Gradle не требуется.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File android-app\build-apk.ps1
-# результат: android-app\release\Polka-1.4.0.apk
+# результат: android-app\release\Polka-1.5.0.apk
 ```
 
 Установка: скачайте APK на телефон и откройте (разрешите установку из неизвестных источников). Подпись — самоподписанный ключ `CN=Polka Books`, поэтому Play Protect может показать предупреждение. APK не публиковался в Google Play.

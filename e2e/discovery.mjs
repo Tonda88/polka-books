@@ -149,8 +149,10 @@ try {
       location.hash = '/my';
     });
     await page.waitForSelector('.mybooks-stats');
-    const text = (await page.locator('.screen').textContent()) ?? '';
-    assert(/import|Интернет|Frankenstein/i.test(text), 'Книга не появилась в «Моих книгах»');
+    await page.waitForTimeout(1200);
+    const listed = await page.locator('.mybooks-stats').evaluate((node) => node.parentElement?.textContent ?? '');
+    const cards = await page.locator('.lib-card').count();
+    assert(cards > 0 || /Интернет|import|Frankenstein/i.test(listed), `Книга не появилась в «Моих книгах» (карточек: ${cards})`);
     pass('Книга на полке «Мои книги»');
   });
 

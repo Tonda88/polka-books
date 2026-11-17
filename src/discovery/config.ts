@@ -40,3 +40,19 @@ export function apiBase(): string {
 export function apiUrl(path: string): string {
   return `${apiBase()}${path}`;
 }
+
+/**
+ * База локального прокси: сам APK (127.0.0.1) или сервер, с которого открыто
+ * приложение. Через неё идут /api/page (анализ страниц) и /api/fetch (файлы),
+ * поэтому встроенный режим работает и без внешнего сервера поиска.
+ */
+export function localBase(): string {
+  if (typeof window === 'undefined') return '';
+  const { origin, protocol } = window.location;
+  if (protocol === 'http:' || protocol === 'https:') return origin;
+  return '';
+}
+
+export function localUrl(path: string): string {
+  return `${localBase()}${path}`;
+}

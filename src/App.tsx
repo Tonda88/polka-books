@@ -19,8 +19,10 @@ import { MyBooksScreen } from './screens/MyBooks';
 import { DownloadsScreen } from './screens/DownloadsScreen';
 import { AudioBookScreen } from './screens/AudioBookScreen';
 import { PreferencesScreen } from './screens/Preferences';
+import { AppearanceScreen } from './screens/Appearance';
 import { WebSearchScreen } from './screens/WebSearch';
 import { downloads } from './downloads/manager';
+import { bindSystemAppearance } from './design/runtime';
 import { ensureProxyMode } from './catalog/proxy';
 import { TabBar } from './components/TabBar';
 import { MiniPlayer } from './components/MiniPlayer';
@@ -67,6 +69,9 @@ function Shell() {
   const route = useRoute();
   const player = usePlayer();
 
+  // Одна система токенов применяется ко всем экранам, системная тема отслеживается.
+  useEffect(() => bindSystemAppearance(document.documentElement, state.settings), [state.settings]);
+
   // Восстанавливаем скачанные сетевые книги и проверяем серверный прокси.
   useEffect(() => {
     void downloads.init();
@@ -91,6 +96,7 @@ function Shell() {
       player: 'Аудиокнига · Полка',
       search: 'Поиск книг в интернете · Полка',
       catalogs: 'Каталоги книг · Полка',
+      appearance: 'Внешний вид · Полка',
       details: 'Книга · Полка',
       mybooks: 'Мои книги · Полка',
       prefs: 'Вкус и предпочтения · Полка',
@@ -124,6 +130,8 @@ function Shell() {
         return <MyBooksScreen />;
       case 'prefs':
         return <PreferencesScreen />;
+      case 'appearance':
+        return <AppearanceScreen />;
       case 'web':
         return <WebSearchScreen />;
       case 'downloads':

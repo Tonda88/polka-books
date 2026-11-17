@@ -42,6 +42,13 @@ export function HomeScreen() {
     .map((id) => BOOK_MAP.get(id))
     .filter((book): book is BookMeta => Boolean(book));
 
+  const recentBooks = Object.values(state.progress)
+    .filter((entry) => entry.bookId !== continueItem?.book.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map((entry) => BOOK_MAP.get(entry.bookId))
+    .filter((book): book is BookMeta => Boolean(book))
+    .slice(0, 6);
+
   const popular = [...BOOKS].sort((a, b) => b.reviews - a.reviews).slice(0, 3);
   const featured = BOOKS.find((book) => book.id === 'anna-karenina') ?? BOOKS[0];
   const similarFiltered = similar
@@ -174,6 +181,25 @@ export function HomeScreen() {
           <p className="first-book__hint">
             Скачайте книгу — и она будет доступна без интернета. Рекомендации подстроятся под то, что вы прочитаете.
           </p>
+        </section>
+      )}
+
+      {recentBooks.length > 0 && (
+        <section className="section">
+          <div className="section__head">
+            <div>
+              <h2 className="section__title">Недавно открытые</h2>
+              <p className="section__sub">Вернитесь к книге с того места, где остановились</p>
+            </div>
+            <button type="button" className="link-button" onClick={() => navigate('/my')}>
+              Библиотека
+            </button>
+          </div>
+          <div className="h-scroll">
+            {recentBooks.map((book) => (
+              <BookCard key={book.id} book={book} reason="Недавно открывали" />
+            ))}
+          </div>
         </section>
       )}
 

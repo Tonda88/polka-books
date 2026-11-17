@@ -20,7 +20,8 @@ export type Screen =
   // --- интернет-поиск и импорт ---
   | 'web'
   // --- интернет-поиск книг (основной) ---
-  | 'catalogs';
+  | 'catalogs'
+  | 'appearance';
 
 export interface Route {
   screen: Screen;
@@ -55,6 +56,7 @@ const SCREEN_PATHS: Record<string, Screen> = {
   prefs: 'prefs',
   web: 'web',
   catalogs: 'catalogs',
+  appearance: 'appearance',
 };
 
 export function parseRoute(hash: string): Route {
@@ -126,6 +128,8 @@ export function toPath(route: Route): string {
       return '/web';
     case 'catalogs':
       return '/catalogs';
+    case 'appearance':
+      return '/appearance';
     case 'audio':
       return `/audio/${encodeURIComponent(route.id ?? '')}`;
     case 'book':
@@ -174,6 +178,11 @@ export function openBook(bookId: string): void {
 /** Каталоги книг (прежний поиск по книжным источникам). */
 export function openCatalogs(): void {
   navigate('/catalogs');
+}
+
+/** Экран настройки внешнего вида. */
+export function openAppearance(): void {
+  navigate('/appearance');
 }
 
 /** Экран «Поиск в интернете». */

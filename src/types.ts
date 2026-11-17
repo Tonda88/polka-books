@@ -135,6 +135,31 @@ export interface Settings {
   autoListen: boolean;
   /** Необязательный ключ Google Books API (вводится пользователем, хранится локально). */
   googleBooksKey?: string | null;
+  /** Ключ Google Custom Search (свой, хранится на устройстве). */
+  googleCseKey?: string | null;
+  /** Идентификатор поисковой системы Google CSE (cx). */
+  googleCseCx?: string | null;
+  /** Ключ Bing Web Search (свой). */
+  bingKey?: string | null;
+  /** Адрес сервера интернет-поиска (пусто — встроенный режим). */
+  searchServerUrl?: string | null;
+  /** Внешняя тема интерфейса. */
+  appearanceTheme?: 'graphite' | 'ivory' | 'midnight' | 'forest' | 'sand';
+  /** Принудительный режим света/тьмы или системный режим. */
+  appearanceMode?: 'system' | 'dark' | 'light';
+  /** Цвет акцента. */
+  accentColor?: 'olive' | 'champagne' | 'bronze' | 'sage' | 'terracotta';
+  /** Стиль карточек книг. */
+  cardStyle?: 'cover' | 'minimal' | 'comfortable';
+  /** Плотность интерфейса. */
+  uiDensity?: 'compact' | 'comfortable' | 'spacious';
+  /** Масштаб текста вне читалки. */
+  uiFontScale?: number;
+  /** Включить микроанимации. */
+  animations?: boolean;
+  /** Настройки живого предпросмотра темы (до подтверждения). */
+  appearanceDraftTheme?: 'graphite' | 'ivory' | 'midnight' | 'forest' | 'sand' | null;
+  appearanceDraftMode?: 'system' | 'dark' | 'light' | null;
 }
 
 export interface Profile {

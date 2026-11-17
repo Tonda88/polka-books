@@ -1,27 +1,30 @@
-/* ============ Токены и база ============ */
+﻿/* ============ Токены и база ============ */
 :root {
-  --bg: #0b0b0f;
-  --bg-soft: #101017;
-  --surface: #14141c;
-  --surface-2: #1b1b25;
-  --surface-3: #25252f;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
-  --text: #f4f1ea;
-  --muted: #9a96a3;
-  --muted-2: #6f6b78;
-  --accent: #ff6b3d;
-  --accent-2: #ffc46b;
-  --accent-soft: rgba(255, 107, 61, 0.14);
-  --green: #5ed49c;
-  --red: #ff7070;
-  --radius-xl: 28px;
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
-  --shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  /* Graphite default — единая основа всех экранов. */
+  --bg: #171714;
+  --bg-soft: #1d1d19;
+  --surface: #23231e;
+  --surface-2: #2b2b24;
+  --surface-3: #37372e;
+  --border: rgba(242, 239, 228, 0.08);
+  --border-strong: rgba(242, 239, 228, 0.15);
+  --text: #f2efe4;
+  --muted: #aaa694;
+  --muted-2: #777565;
+  --accent: #a4a879;
+  --accent-2: #c9b985;
+  --accent-soft: rgba(164, 168, 121, 0.16);
+  --green: #8ea878;
+  --red: #d17a70;
+  --radius-xl: 26px;
+  --radius-lg: 20px;
+  --radius-md: 15px;
+  --radius-sm: 11px;
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-serif: 'PT Serif', Georgia, 'Times New Roman', serif;
+  --app-font-scale: 1;
+  --app-density: 1;
   color-scheme: dark;
 }
 
@@ -44,10 +47,7 @@ body {
 
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(80% 60% at 15% 0%, rgba(255, 107, 61, 0.09), transparent 60%),
-    radial-gradient(70% 50% at 105% 10%, rgba(120, 100, 255, 0.07), transparent 55%),
-    #07070a;
+  background: var(--bg);
 }
 
 #root {
@@ -105,11 +105,9 @@ blockquote {
   max-width: 460px;
   min-height: 100dvh;
   margin: 0 auto;
-  background:
-    radial-gradient(120% 40% at 50% -10%, rgba(255, 107, 61, 0.07), transparent 70%),
-    var(--bg);
+  background: var(--bg);
   overflow-x: hidden;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 90px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px var(--border), 0 24px 70px rgba(0, 0, 0, 0.24);
 }
 
 .app--full {
@@ -201,9 +199,9 @@ blockquote {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, #ff8149, #ff5b32);
-  color: #200d06;
-  box-shadow: 0 10px 26px rgba(255, 91, 50, 0.28);
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #1b1910;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .btn--ghost {
@@ -255,7 +253,7 @@ blockquote {
 .icon-button--accent {
   background: var(--accent-soft);
   color: var(--accent);
-  border-color: rgba(255, 107, 61, 0.3);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .icon-button--sm {
@@ -317,14 +315,14 @@ blockquote {
   height: 44px;
   flex: none;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff9a62, #ff5b32);
-  color: #23100a;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #1b1910;
   font-weight: 750;
   font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(255, 91, 50, 0.28);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 /* ============ Чипы, сегменты, поля ============ */
@@ -360,7 +358,7 @@ blockquote {
 
 .chip.is-active {
   background: var(--accent-soft);
-  border-color: rgba(255, 107, 61, 0.45);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: #ffcbb8;
 }
 
@@ -453,7 +451,7 @@ blockquote {
 
 .text-input:focus,
 .select:focus {
-  border-color: rgba(255, 107, 61, 0.55);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .select {
@@ -995,8 +993,8 @@ blockquote {
   font-size: 10px;
   line-height: 1.3;
   color: #ffcbb8;
-  background: rgba(255, 107, 61, 0.1);
-  border: 1px solid rgba(255, 107, 61, 0.18);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
   border-radius: 7px;
   padding: 4px 6px;
   display: -webkit-box;
@@ -1160,8 +1158,8 @@ blockquote {
 
 .pill--flame {
   color: #ffcbb8;
-  background: rgba(255, 107, 61, 0.1);
-  border-color: rgba(255, 107, 61, 0.22);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .pill--soft {
@@ -1173,8 +1171,8 @@ blockquote {
   padding: 16px;
   border-radius: var(--radius-lg);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(255, 107, 61, 0.16), transparent 55%),
-    linear-gradient(160deg, #1c1a22, #131219);
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 55%),
+    linear-gradient(160deg, var(--surface), var(--bg-soft));
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: var(--shadow);
 }
@@ -1196,19 +1194,19 @@ blockquote {
   height: 7px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 0 rgba(255, 107, 61, 0.6);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 61, 0.45);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(255, 107, 61, 0);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 107, 61, 0);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
   }
 }
 
@@ -1343,8 +1341,8 @@ blockquote {
 }
 
 .goal-strip--empty {
-  background: linear-gradient(140deg, rgba(255, 107, 61, 0.09), rgba(255, 255, 255, 0.02));
-  border-color: rgba(255, 107, 61, 0.2);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 9%, transparent), rgba(255, 255, 255, 0.02));
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .goal-strip__icon {
@@ -1460,7 +1458,7 @@ blockquote {
 }
 
 .search__input:focus {
-  border-color: rgba(255, 107, 61, 0.4);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .search__input::-webkit-search-cancel-button {
@@ -2204,8 +2202,8 @@ blockquote {
 
 .streak-badge.is-hot {
   color: #ffcbb8;
-  background: rgba(255, 107, 61, 0.12);
-  border-color: rgba(255, 107, 61, 0.26);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .stats-row {
@@ -2356,7 +2354,7 @@ blockquote {
 
 .status-chip--on-track {
   color: #ffcbb8;
-  background: rgba(255, 107, 61, 0.14);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .status-chip--behind {
@@ -2459,15 +2457,15 @@ blockquote {
 }
 
 .heatmap-cell.level-1 {
-  background: rgba(255, 107, 61, 0.22);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .heatmap-cell.level-2 {
-  background: rgba(255, 107, 61, 0.42);
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .heatmap-cell.level-3 {
-  background: rgba(255, 107, 61, 0.66);
+  background: color-mix(in srgb, var(--accent) 66%, transparent);
 }
 
 .heatmap-cell.level-4 {
@@ -2640,14 +2638,14 @@ blockquote {
   height: 62px;
   flex: none;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff9a62, #ff5b32);
-  color: #23100a;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #1b1910;
   font-weight: 750;
   font-size: 21px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 26px rgba(255, 91, 50, 0.3);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .profile-head__body {
@@ -2946,7 +2944,7 @@ blockquote {
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(90% 50% at 80% 0%, rgba(255, 107, 61, 0.13), transparent 60%),
+    radial-gradient(90% 50% at 80% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%),
     radial-gradient(80% 50% at 0% 15%, rgba(140, 120, 255, 0.08), transparent 55%),
     #0b0b0f;
   animation: screenIn 0.3s ease both;
@@ -2999,12 +2997,12 @@ blockquote {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(150deg, #ff9a62, #ff5b32);
-  color: #24100a;
+  background: linear-gradient(150deg, var(--accent-2), var(--accent));
+  color: #1b1910;
   font-family: var(--font-serif);
   font-size: 32px;
   font-weight: 700;
-  box-shadow: 0 16px 36px rgba(255, 91, 50, 0.3);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--accent) 28%, transparent);
   margin-bottom: 18px;
 }
 
@@ -3116,8 +3114,8 @@ blockquote {
 }
 
 .preset-card.is-selected {
-  border-color: rgba(255, 107, 61, 0.45);
-  background: rgba(255, 107, 61, 0.08);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .preset-card__check {
@@ -3172,7 +3170,7 @@ blockquote {
   --reader-text: #e9e4d8;
   --reader-muted: #8e887a;
   --reader-soft: rgba(255, 255, 255, 0.06);
-  --reader-accent: #ff6b3d;
+  --reader-accent: var(--accent);
 }
 
 .reader[data-theme='sepia'] {
@@ -3634,7 +3632,7 @@ blockquote {
   overflow-y: auto;
   padding: calc(8px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
   background:
-    radial-gradient(90% 45% at 50% 0%, rgba(255, 107, 61, 0.16), transparent 70%),
+    radial-gradient(90% 45% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
     linear-gradient(180deg, #14131a, #0b0b0f 42%);
   color: var(--text);
   scrollbar-width: thin;
@@ -3696,7 +3694,7 @@ blockquote {
   position: absolute;
   inset: 12% 8% -6%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 107, 61, 0.3), transparent 75%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 30%, transparent), transparent 75%);
   filter: blur(22px);
   z-index: -1;
 }
@@ -3786,12 +3784,12 @@ blockquote {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff8149, #ff5533);
-  color: #22100a;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #1b1910;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 14px 34px rgba(255, 85, 51, 0.36);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 30%, transparent);
   transition: transform 0.15s ease;
 }
 
@@ -3975,9 +3973,9 @@ blockquote {
   display: flex;
   align-items: stretch;
   padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
-  background: rgba(14, 14, 20, 0.82);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
 }
 
@@ -4021,11 +4019,11 @@ blockquote {
   gap: 10px;
   padding: 8px 8px 8px 9px;
   border-radius: 16px;
-  background: rgba(30, 28, 38, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   cursor: pointer;
   overflow: hidden;
   animation: miniIn 0.28s ease both;
@@ -4277,7 +4275,7 @@ blockquote {
   justify-content: center;
   gap: 10px;
   background:
-    radial-gradient(80% 50% at 50% 20%, rgba(255, 107, 61, 0.14), transparent 70%),
+    radial-gradient(80% 50% at 50% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
     #0b0b0f;
 }
 
@@ -4422,5 +4420,81 @@ blockquote {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* ===== Глобальные дизайн-токены персонализации ===== */
+html {
+  font-size: calc(16px * var(--app-font-scale, 1));
+}
+
+.screen {
+  padding-left: calc(18px * var(--app-density, 1));
+  padding-right: calc(18px * var(--app-density, 1));
+}
+
+/* Целостная светлая тема: меняются базовые поверхности всех экранов. */
+:root[data-app-mode='light'],
+:root[data-app-theme='ivory']:not([data-app-mode='dark']) {
+  color-scheme: light;
+}
+
+:root[data-app-mode='system'] {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-app-mode='system'] {
+    color-scheme: light;
+  }
+}
+
+/* Стиль карточек книг глобально, включая сетевые карточки и полки. */
+:root[data-card-style='minimal'] .book-card__cover-wrap,
+:root[data-card-style='minimal'] .shelf-card__cover {
+  display: none;
+}
+
+:root[data-card-style='minimal'] .book-card {
+  min-height: 64px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+
+:root[data-card-style='comfortable'] .book-card,
+:root[data-card-style='comfortable'] .discovery-card {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+}
+
+:root[data-card-style='cover'] .book-card__cover-wrap,
+:root[data-card-style='cover'] .shelf-card__cover {
+  display: block;
+}
+
+:root[data-animations='off'] *,
+:root[data-animations='off'] *::before,
+:root[data-animations='off'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Сниженное свечение/радиальные фоны заменены плоскими поверхностями. */
+body,
+.app {
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .appearance-theme,
+  .appearance-swatch,
+  .appearance-card-style {
+    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  }
+  .appearance-theme:active,
+  .appearance-card-style:active {
+    transform: scale(0.985);
   }
 }

@@ -106,7 +106,8 @@ try {
   await step('Поиск книги и оценка 5★ + «Очень понравилась»', async () => {
     await gotoHash('/catalogs', '.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
-    await input.fill('frankenstein');
+    // Локальная книга из public/library — тест предпочтений не зависит от сети.
+    await input.fill('анна каренина');
     await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });
     await page.waitForTimeout(1200);
 
@@ -199,7 +200,8 @@ try {
   await step('Отрицательная оценка: снижение приоритета и «Забыть»', async () => {
     await gotoHash('/catalogs', '.search-hero');
     const input = page.locator('.search-field input, input[type="search"]').first();
-    await input.fill('pride and prejudice');
+    // Локальная книга из public/library — тест предпочтений не зависит от сети.
+    await input.fill('онегин');
     await page.waitForSelector('.catalog-list .catalog-card', { timeout: 90_000 });
     await page.waitForTimeout(1000);
     await page.locator('.catalog-list .catalog-card').first().click();

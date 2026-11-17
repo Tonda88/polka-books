@@ -137,7 +137,13 @@ async function proxyFile(req, res) {
 
     res.writeHead(upstream.status === 206 ? 206 : 200, headers);
     if (upstream.body) {
-      Readable.fromWeb(upstream.body).pipe(res);
+      const stream = Readable.fromWeb(upstream.body);
+      // Обрыв загрузки источника не должен ронять сервер.
+      stream.on('error', () => {
+        if (!res.destroyed) res.destroy();
+      });
+      res.on('close', () => stream.destroy());
+      stream.pipe(res);
     } else {
       res.end();
     }
@@ -259,6 +265,44 @@ const server = createServer((req, res) => {
         sendJson(res, 200, result);
       } catch (error) {
         sendJson(res, 502, { error: error instanceof Error ? error.message : 'Поиск не удался' });
+      }
+    })();
+    return;
+  }
+
+  if (pathname === '/api/page') {
+    void (async () => {
+      const requestUrl = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+      const target = requestUrl.searchParams.get('url') ?? '';
+      const { validateUrl } = await import('./search/analyze.mjs');
+      const valid = validateUrl(target);
+      if (!valid.ok) {
+        sendJson(res, 400, { error: valid.error });
+        return;
+      }
+      try {
+        const upstream = await fetch(valid.url.toString(), {
+          signal: AbortSignal.timeout(15_000),
+          redirect: 'follow',
+          headers: {
+            Accept: 'text/html,application/xhtml+xml',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 13) PolkaBooks/1.4',
+            'Accept-Language': 'ru,en;q=0.8',
+          },
+        });
+        if (!upstream.ok) {
+          sendJson(res, upstream.status, { error: `Страница ответила ${upstream.status}` });
+          return;
+        }
+        const html = (await upstream.text()).slice(0, 3 * 1024 * 1024);
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-store',
+        });
+        res.end(html);
+      } catch (error) {
+        sendJson(res, 502, { error: error instanceof Error ? error.message : 'Не удалось открыть страницу' });
       }
     })();
     return;

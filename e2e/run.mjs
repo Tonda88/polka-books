@@ -152,7 +152,8 @@ async function main() {
     });
 
     await step('Рекомендации с объяснениями', async () => {
-      const reasons = await page.locator('.book-card__reason').allTextContents();
+      const allReasons = await page.locator('.book-card__reason').allTextContents();
+      const reasons = allReasons.filter((reason) => !reason.includes('Недавно открывали'));
       assert(reasons.length >= 3, `Ожидались рекомендации с причинами, найдено ${reasons.length}`);
       await clearToasts(page);
       await shot(page, '04-recommendations');
@@ -501,6 +502,11 @@ async function main() {
         !message.includes('speechSynthesis') &&
         !message.includes('Service Worker') &&
         !message.includes('ERR_INTERNET_DISCONNECTED') &&
+        !message.includes('ERR_CONNECTION_CLOSED') &&
+        !message.includes('ERR_TIMED_OUT') &&
+        !message.includes('ERR_NAME_NOT_RESOLVED') &&
+        // Сетевые сбои внешних источников не считаем ошибкой приложения.
+        !message.includes('Failed to load resource') &&
         !message.includes('ERR_FAILED'),
     );
     if (pageErrors.length) fail('Ошибки JS на странице', pageErrors.join(' | '));

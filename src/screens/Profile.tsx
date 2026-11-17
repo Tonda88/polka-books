@@ -5,7 +5,7 @@ import { usePlayer } from '../lib/player';
 import { favoriteGenres } from '../lib/recommend';
 import { bestStreak, currentStreak, totalStats } from '../lib/goals';
 import { formatMinutes, formatNumber, humanBytes, initials } from '../lib/format';
-import { navigate, openPreferences } from '../lib/router';
+import { navigate, openPreferences, openAppearance } from '../lib/router';
 import { checkSources } from '../catalog/registry';
 import type { SourceHealth } from '../catalog/types';
 import { Sheet } from '../components/Sheet';
@@ -175,6 +175,21 @@ export function ProfileScreen() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-card">
+        <h2 className="settings-card__title">Внешний вид</h2>
+        <div className="profile-appearance-summary">
+          <span className="profile-appearance-summary__swatch" style={{ background: 'var(--accent)' }} />
+          <span>{state.settings.appearanceTheme ?? 'graphite'} · {state.settings.appearanceMode ?? 'system'}</span>
+          <span>{state.settings.cardStyle ?? 'cover'}</span>
+        </div>
+        <p className="settings-card__hint">Тема, акцент, плотность, карточки и размер текста — предпросмотр применяется сразу ко всем экранам.</p>
+        <button type="button" className="setting-button" onClick={openAppearance}>
+          <Icon name="pencil" size={18} />
+          Настроить оформление
+          <Icon name="right" size={16} className="muted" />
+        </button>
       </section>
 
       <section className="settings-card">

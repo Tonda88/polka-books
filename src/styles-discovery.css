@@ -1,4 +1,4 @@
-/* Стили универсального интернет-поиска книг. */
+﻿/* Стили универсального интернет-поиска книг. */
 
 .internet-search-screen {
   display: flex;
@@ -222,7 +222,7 @@
 
 .discovery-card__reason {
   font-size: 10.5px;
-  color: var(--orange, #f0a44a);
+  color: var(--accent-2);
   margin: 4px 0 0;
 }
 
@@ -303,4 +303,103 @@
     width: 62px;
     height: 93px;
   }
+}
+
+
+/* --- режим поиска и настройки источников --- */
+.discovery-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.discovery-mode__badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.discovery-mode__badge.is-server {
+  color: var(--green, #4ade80);
+  border: 1px solid color-mix(in srgb, var(--green, #4ade80) 40%, transparent);
+}
+
+.discovery-mode__badge.is-direct {
+  color: var(--accent-2);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+
+.discovery-setup--direct {
+  border-color: color-mix(in srgb, var(--accent-2) 30%, transparent);
+}
+
+.discovery-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px 20px;
+}
+
+.discovery-direct-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+/* --- история запросов и фильтры результатов --- */
+.search-history {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.search-history__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.discovery-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+}
+
+.discovery-filters__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.discovery-sort {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.discovery-sort .select {
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 11px;
 }

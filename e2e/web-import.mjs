@@ -91,7 +91,7 @@ try {
       await page.waitForSelector('.home');
     }
     await gotoHash('/catalogs', '.search-hero');
-    await page.getByRole('button', { name: /Поиск в интернете/ }).first().click();
+    await page.locator('.web-switch__button').first().click();
     await page.waitForSelector('.web-search-screen');
     await shot('80-web-search');
     pass('Режим «Поиск в интернете» открылся');

@@ -57,6 +57,8 @@ export interface BookCandidate {
   language?: string;
   year?: number;
   isbn?: string;
+  /** Жанры, определённые по метаданным страницы (для фильтра результатов). */
+  genres?: string[];
   /** Страница, с которой получены данные. */
   pageUrl: string;
   /** Провайдер, через который найдена страница. */
@@ -71,6 +73,12 @@ export interface BookCandidate {
 }
 
 export interface InternetSearchResult {
+  /** 'server' — агрегатор с ключами, 'direct' — встроенный режим на телефоне. */
+  mode: 'server' | 'direct';
+  /** Можно ли анализировать страницы (есть прокси страниц). */
+  pageAnalysis?: boolean;
+  /** Официальные SearXNG публичные узлы, доступные сейчас. */
+  searxInstances?: Array<{ url: string; success: number; checkedAt: number }>;
   query: string;
   books: BookCandidate[];
   providers: ProviderStatus[];

@@ -4,8 +4,8 @@ import { Icon } from './Icons';
 const TABS: Array<{ screen: Screen; path: string; label: string; icon: string }> = [
   { screen: 'home', path: '/', label: 'Главная', icon: 'home' },
   { screen: 'search', path: '/search', label: 'Поиск', icon: 'search' },
-  { screen: 'mybooks', path: '/my', label: 'Мои книги', icon: 'library' },
-  { screen: 'goals', path: '/goals', label: 'Цели', icon: 'target' },
+  { screen: 'mybooks', path: '/my', label: 'Библиотека', icon: 'library' },
+  { screen: 'downloads', path: '/downloads', label: 'Загрузки', icon: 'download' },
   { screen: 'profile', path: '/me', label: 'Профиль', icon: 'user' },
 ];
 

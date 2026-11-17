@@ -9,7 +9,7 @@ import { detectFormat } from '../downloads/detect';
 import { readZipFile } from '../downloads/parsers/epub';
 import { commitImport, prepareImport } from '../webcatalog/library';
 import type { BookDraft } from '../webcatalog/types';
-import { proxyFileUrl } from './api';
+import { localUrl } from './config';
 import type { BookFile } from './types';
 
 export interface DownloadOutcome {
@@ -76,17 +76,27 @@ export async function downloadBookFile(file: BookFile, options: DownloadOptions 
     return { ok: false, error: file.message || 'Файл недоступен для скачивания' };
   }
 
-  let response: Response;
+  // Сначала через прокси приложения (снимает CORS), затем напрямую.
+  let response: Response | null = null;
   try {
-    response = await fetch(proxyFileUrl(file.url), {
+    const proxied = await fetch(localUrl(`/api/fetch?url=${encodeURIComponent(file.url)}`), {
       signal: options.signal,
       headers: { Accept: '*/*' },
     });
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'Не удалось начать скачивание' };
+    if (proxied.ok) response = proxied;
+  } catch {
+    response = null;
   }
-  if (!response.ok) {
-    return { ok: false, error: `Сервер скачивания ответил ${response.status}` };
+  if (!response) {
+    try {
+      const directFetch = await fetch(file.url, { signal: options.signal, redirect: 'follow' });
+      if (directFetch.ok) response = directFetch;
+    } catch {
+      response = null;
+    }
+  }
+  if (!response) {
+    return { ok: false, error: 'Не удалось скачать файл: сайт или прокси недоступны' };
   }
 
   const total = Number(response.headers.get('content-length') ?? 0);

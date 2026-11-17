@@ -36,6 +36,17 @@ const DEFAULT_SETTINGS: Settings = {
   ttsVoice: null,
   autoListen: false,
   googleBooksKey: null,
+  googleCseKey: null,
+  googleCseCx: null,
+  bingKey: null,
+  searchServerUrl: null,
+  appearanceTheme: 'graphite',
+  appearanceMode: 'system',
+  accentColor: 'olive',
+  cardStyle: 'cover',
+  uiDensity: 'comfortable',
+  uiFontScale: 1,
+  animations: true,
 };
 
 const DEFAULT_PROFILE: Profile = {

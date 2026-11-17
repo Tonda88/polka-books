@@ -500,13 +500,13 @@ export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
   return (
     <div
       className="reader"
-      data-theme={state.settings.theme}
+      data-theme={state.settings.appearanceMode === 'light' ? 'light' : state.settings.appearanceMode === 'dark' ? 'dark' : state.settings.appearanceTheme === 'ivory' || state.settings.theme === 'sepia' ? 'sepia' : 'dark'}
       style={{
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ['--font-scale' as string]: String(state.settings.fontScale),
+        ['--font-scale' as string]: String(state.settings.fontScale * (state.settings.uiFontScale ?? 1)),
         ['--reader-family' as string]: state.settings.serif
-          ? '"PT Serif", Georgia, "Times New Roman", serif'
-          : '-apple-system, "Segoe UI", Roboto, sans-serif',
+          ? 'var(--font-serif)'
+          : 'var(--font-ui)',
       }}
     >
       <header className="reader__bar">
@@ -584,7 +584,7 @@ export function ReaderScreen({ bookId, chapter, paragraph }: ReaderProps) {
             <div className="reader__content">
               {chapterIndex === 0 && (
                 <div className="reader__book-head">
-                  <div className="reader__book-title">{meta.title}</div>
+                  <div className="reader__book-title" style={{ fontSize: `${state.settings.fontScale * 13}px`, fontFamily: state.settings.serif ? 'var(--font-serif)' : 'var(--font-ui)' }}>{meta.title}</div>
                   <div className="reader__book-author">{meta.author}</div>
                   <div className="reader__source-line">
                     Полный текст · источник: {meta.sourceName}

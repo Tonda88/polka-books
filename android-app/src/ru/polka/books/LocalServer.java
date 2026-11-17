@@ -37,10 +37,6 @@ import java.util.Map;
 public class LocalServer {
 
     private static final String TAG = "PolkaServer";
-    private static final String[] ALLOWED_HOSTS = {
-            "archive.org", "openlibrary.org", "covers.openlibrary.org",
-            "gutenberg.org", "www.gutenberg.org", "librivox.org", "www.librivox.org"
-    };
     private static final long MAX_BYTES = 600L * 1024 * 1024;
 
     private final AssetManager assets;
@@ -131,6 +127,10 @@ public class LocalServer {
         }
         if (path.startsWith("/api/fetch")) {
             proxy(path, rangeHeader, out);
+            return;
+        }
+        if (path.startsWith("/api/page")) {
+            proxyPage(path, out);
             return;
         }
         if (path.startsWith("/api/googlebooks")) {
@@ -244,6 +244,86 @@ public class LocalServer {
         return result;
     }
 
+
+    /**
+     * Отдаёт сырой HTML страницы для анализа книги на устройстве.
+     * Внутренние адреса запрещены, размер ограничен.
+     */
+    private void proxyPage(String rawPath, OutputStream out) throws IOException {
+        int index = rawPath.indexOf("url=");
+        if (index < 0) {
+            sendJsonError(out, 400, "Параметр url обязателен");
+            return;
+        }
+        String encoded = rawPath.substring(index + 4);
+        int amp = encoded.indexOf('&');
+        if (amp >= 0) encoded = encoded.substring(0, amp);
+        String target;
+        try {
+            target = URLDecoder.decode(encoded, "UTF-8");
+        } catch (Exception error) {
+            sendJsonError(out, 400, "Некорректный URL");
+            return;
+        }
+        URL url;
+        try {
+            url = new URL(target);
+        } catch (Exception error) {
+            sendJsonError(out, 400, "Некорректный URL");
+            return;
+        }
+        String protocol = url.getProtocol();
+        String host = url.getHost().toLowerCase(Locale.ROOT);
+        if (!protocol.equals("https") && !protocol.equals("http")) {
+            sendJsonError(out, 400, "Разрешены только http(s)-адреса");
+            return;
+        }
+        if (host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("192.168.")
+                || host.startsWith("10.") || host.startsWith("172.16.") || host.startsWith("169.254.")) {
+            sendJsonError(out, 403, "Внутренние адреса запрещены");
+            return;
+        }
+
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(15_000);
+            connection.setReadTimeout(20_000);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) PolkaBooks/1.4");
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml");
+            connection.setRequestProperty("Accept-Language", "ru,en;q=0.8");
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 400) {
+                sendJsonError(out, status == 404 ? 404 : 502, "Страница ответила " + status);
+                return;
+            }
+            byte[] body = readLimited(connection.getInputStream(), MAX_BYTES);
+            writeHeaders(out, 200, "text/html; charset=utf-8", body.length);
+            out.write(body);
+            out.flush();
+        } catch (IOException error) {
+            sendJsonError(out, 502, "Не удалось открыть страницу: " + error.getMessage());
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    /** Читает поток с ограничением размера. */
+    private static byte[] readLimited(InputStream stream, long limit) throws IOException {
+        java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+        byte[] chunk = new byte[64 * 1024];
+        long total = 0;
+        int read;
+        while ((read = stream.read(chunk)) > 0) {
+            buffer.write(chunk, 0, read);
+            total += read;
+            if (total > limit) break;
+        }
+        stream.close();
+        return buffer.toByteArray();
+    }
+
     // ------------------------------------------------------------------- прокси
 
     private void proxy(String rawPath, String rangeHeader, OutputStream out) throws IOException {
@@ -276,8 +356,8 @@ public class LocalServer {
             sendJsonError(out, 400, "Разрешены только http(s)-адреса");
             return;
         }
-        if (!isAllowedHost(url.getHost())) {
-            sendJsonError(out, 403, "Домен " + url.getHost() + " не входит в белый список");
+        if (isInternalHost(url.getHost())) {
+            sendJsonError(out, 403, "Внутренние адреса запрещены");
             return;
         }
 
@@ -330,12 +410,28 @@ public class LocalServer {
         }
     }
 
-    private static boolean isAllowedHost(String hostname) {
+    /**
+     * Разрешаем проксировать любой публичный http(s)-хост: универсальный поиск
+     * находит книги на разных сайтах. Внутренние адреса блокируем (SSRF).
+     */
+    private static boolean isInternalHost(String hostname) {
         String host = hostname.toLowerCase(Locale.ROOT);
-        for (String allowed : ALLOWED_HOSTS) {
-            if (host.equals(allowed)) return true;
+        if (host.equals("localhost") || host.equals("127.0.0.1") || host.equals("0.0.0.0") || host.equals("::1")) {
+            return true;
         }
-        return host.endsWith(".archive.org");
+        if (host.startsWith("10.") || host.startsWith("192.168.") || host.startsWith("169.254.")) return true;
+        if (host.startsWith("172.")) {
+            String[] parts = host.split("\\.");
+            if (parts.length > 1) {
+                try {
+                    int second = Integer.parseInt(parts[1]);
+                    return second >= 16 && second <= 31;
+                } catch (NumberFormatException ignored) {
+                    return false;
+                }
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ утилиты

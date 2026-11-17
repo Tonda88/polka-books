@@ -27,14 +27,15 @@ import { profilesByIds } from '../prefs/repository';
 import { openPreferences } from '../lib/router';
 import type { BookProfile, ShelfBook } from '../prefs/types';
 
-type Segment = 'all' | 'downloaded' | 'reading' | 'favorites' | 'history';
+type Segment = 'all' | 'downloaded' | 'reading' | 'finished' | 'favorites' | 'history';
 type FormatFilter = 'all' | 'epub' | 'pdf' | 'audio' | 'text' | 'builtin';
 type SortMode = 'added' | 'title' | 'author' | 'size';
 
 const SEGMENTS: Array<{ id: Segment; label: string }> = [
   { id: 'all', label: 'Все' },
   { id: 'downloaded', label: 'Скачанные' },
-  { id: 'reading', label: 'Читаю' },
+  { id: 'reading', label: 'Начатые' },
+  { id: 'finished', label: 'Завершённые' },
   { id: 'favorites', label: 'Избранное' },
   { id: 'history', label: 'История' },
 ];
@@ -138,6 +139,7 @@ export function MyBooksScreen() {
   const [segment, setSegment] = useState<Segment>('all');
   const [format, setFormat] = useState<FormatFilter>('all');
   const [sort, setSort] = useState<SortMode>('added');
+  const [query, setQuery] = useState('');
   const { isFavorite, toggle: toggleFavoriteId } = useFavorites();
   const [sheetItem, setSheetItem] = useState<MyBookItem | null>(null);
   const [version, bump] = useReducer((value: number) => value + 1, 0);
@@ -264,6 +266,7 @@ export function MyBooksScreen() {
       all: items.length,
       downloaded: items.filter((item) => item.downloaded).length,
       reading: items.filter((item) => item.reading).length,
+      finished: items.filter((item) => item.finished).length,
       favorites: items.filter((item) => item.favorite).length,
       history: items.filter((item) => item.history).length,
     }),
@@ -319,10 +322,17 @@ export function MyBooksScreen() {
     let list = items;
     if (segment === 'downloaded') list = list.filter((item) => item.downloaded);
     else if (segment === 'reading') list = list.filter((item) => item.reading);
+    else if (segment === 'finished') list = list.filter((item) => item.finished);
     else if (segment === 'favorites') list = list.filter((item) => item.favorite);
     else if (segment === 'history') list = list.filter((item) => item.history);
     if (categoryIds) list = list.filter((item) => categoryIds.has(catalogIdOfKey(item.key)));
     if (format !== 'all') list = list.filter((item) => item.formatGroup === format);
+    const needle = query.trim().toLowerCase();
+    if (needle) {
+      list = list.filter((item) =>
+        [item.title, ...item.authors].join(' ').toLowerCase().includes(needle),
+      );
+    }
 
     const sorted = [...list];
     switch (sort) {
@@ -340,12 +350,13 @@ export function MyBooksScreen() {
         break;
     }
     return sorted;
-  }, [items, segment, format, sort]);
+  }, [items, segment, format, sort, query]);
 
   const resetFilters = () => {
     setSegment('all');
     setFormat('all');
     setSort('added');
+    setQuery('');
   };
 
   const toggleFavorite = (item: MyBookItem) => {
@@ -500,6 +511,17 @@ export function MyBooksScreen() {
       </section>
 
       <div className="mybooks-filters">
+        <label className="mybooks-search">
+          <Icon name="search" size={17} />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Поиск по моей библиотеке"
+            aria-label="Поиск по моей библиотеке"
+          />
+        </label>
+
         <div className="segmented library-tabs">
           {SEGMENTS.map((item) => (
             <button
