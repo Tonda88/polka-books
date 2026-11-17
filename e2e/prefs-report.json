@@ -1,5 +1,5 @@
 {
-  "ranAt": "2026-11-17T12:31:46.183Z",
+  "ranAt": "2026-11-17T16:05:11.732Z",
   "url": "http://127.0.0.1:4173",
   "passed": 8,
   "failed": 0,
@@ -12,12 +12,12 @@
     {
       "name": "Оценка и быстрая реакция сохранены",
       "ok": true,
-      "extra": "Собрание сочинений в 12-ти т. Т. 08. Анна Каренина. Роман в 8-ми ч. Ч. 1-4"
+      "extra": "Анна Каренина"
     },
     {
       "name": "RatingEntity + UserPreferences + AuthorPreference",
       "ok": true,
-      "extra": "оценка 5★/love, сигналов 4, авторов 8"
+      "extra": "оценка 5★/love, сигналов 4, авторов 2"
     },
     {
       "name": "Предпочтения отображаются",
@@ -32,7 +32,7 @@
     {
       "name": "Полки рекомендаций построены",
       "ok": true,
-      "extra": "16 карточек"
+      "extra": "31 карточек"
     },
     {
       "name": "Негатив учтён и сбрасывается вручную",
@@ -46,9 +46,9 @@
     }
   ],
   "pageErrors": [
-    "Failed to load resource: net::ERR_CONNECTION_TIMED_OUT",
-    "Failed to load resource: net::ERR_CONNECTION_TIMED_OUT",
-    "Failed to load resource: net::ERR_CONNECTION_TIMED_OUT",
-    "Failed to load resource: net::ERR_CONNECTION_TIMED_OUT"
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED"
   ]
 }
