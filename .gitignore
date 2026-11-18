@@ -12,8 +12,12 @@ screenshots/59-catalog-failure.png
 release/
 tmp/
 
-# ������ APK
+# сборка APK
 android-app/build/
 android-app/release/
 *.keystore
 dist-app/
+
+# локальные секреты сервера
+server/.env
+!server/.env.example

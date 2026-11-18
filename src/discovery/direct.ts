@@ -1,17 +1,15 @@
 /**
- * Встроенный режим поиска: провайдеры, доступные прямо с телефона.
+ * Встроенный режим поиска (direct mode) — работа без сервера.
  *
- * Работают без сервера, если у API открыт CORS:
- *  - Google Custom Search — со своим ключом пользователя (хранится на устройстве);
- *  - Bing Web Search — со своим ключом;
- *  - Crossref, OpenAlex, Open Library, Project Gutenberg (IA) — без ключа.
+ * Основной резервный источник: SearXNG через официальный реестр searx.space.
+ * Ключи пользователя: Google CSE, Bing — для опционального расширения.
+ * Яндекс XML API (пользовательский ключ) — опционально.
  *
- * Страницы сайтов для анализа отдаёт локальный прокси APK (`/api/page`),
- * поэтому анализ работает и без внешнего сервера.
+ * Страницы сайтов для анализа отдаёт локальный прокси APK (`/api/page`).
  */
 import { localBase } from './config';
-import type { SearchHit } from './types';
 import { analyzeHtml, type PageAnalysis } from './html';
+import type { SearchHit } from './types';
 
 export interface DirectKeys {
   googleCseKey?: string | null;
@@ -49,249 +47,156 @@ function hit(engine: string, url: string | undefined, title: string | undefined,
   return { engine, url, title: (title ?? '').slice(0, 300), snippet: snippet.slice(0, 500), ...extra };
 }
 
-/** Доступные на устройстве провайдеры (по фактическим ключам). */
+/** Провайдеры для UI — что доступно на устройстве. */
 export function directProviders(keys: DirectKeys): DirectProviderInfo[] {
-  return [
+  const providers: DirectProviderInfo[] = [
     {
+      id: 'searxng',
+      name: 'SearXNG (официальный реестр)',
+      requiresKey: false,
+      available: true,
+      note: 'Публичные узлы из searx.space с JSON API, health-check и кэш',
+    },
+  ];
+  if (keys.googleCseKey && keys.googleCseCx) {
+    providers.push({
       id: 'google',
       name: 'Google (CSE)',
       requiresKey: true,
-      available: Boolean(keys.googleCseKey && keys.googleCseCx),
+      available: true,
       note: 'Свой ключ Google Custom Search',
-    },
-    {
+    });
+  }
+  if (keys.bingKey) {
+    providers.push({
       id: 'bing',
       name: 'Bing',
       requiresKey: true,
-      available: Boolean(keys.bingKey),
+      available: true,
       note: 'Свой ключ Bing Web Search',
-    },
-    { id: 'crossref', name: 'Crossref', requiresKey: false, available: true, note: 'Открытый индекс книг' },
-    { id: 'openalex', name: 'OpenAlex', requiresKey: false, available: true, note: 'Открытый индекс изданий' },
-    { id: 'openlibrary', name: 'Open Library', requiresKey: false, available: true, note: 'Открытый каталог' },
-    { id: 'gutenberg', name: 'Gutenberg (IA)', requiresKey: false, available: true, note: 'Общественное достояние' },
-    { id: 'librivox', name: 'LibriVox', requiresKey: false, available: true, note: 'Бесплатные аудиокниги' },
-    {
+    });
+  }
+  if (keys.yandexXmlUser && keys.yandexXmlKey) {
+    providers.push({
       id: 'yandex',
-      name: 'Яндекс',
+      name: 'Яндекс (XML)',
       requiresKey: true,
-      available: Boolean(keys.yandexXmlUser && keys.yandexXmlKey),
+      available: true,
       note: 'Яндекс XML API (пользовательский ключ)',
-    },
-  ];
+    });
+  }
+  return providers;
 }
 
-/** Поиск через один провайдер прямо с устройства. */
+/** Поиск через direct-провайдеры с ключами пользователя. */
 export async function searchDirect(query: string, keys: DirectKeys, limit = 12): Promise<SearchHit[]> {
-  const providers = directProviders(keys).filter((provider) => provider.available);
-  const results = await Promise.all(
-    providers.map(async (provider) => {
-      try {
-        switch (provider.id) {
-          case 'google': {
-            const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(keys.googleCseKey ?? '')}&cx=${encodeURIComponent(keys.googleCseCx ?? '')}&q=${encodeURIComponent(query)}&num=10&hl=ru`;
-            const data = await fetchJson<{ items?: Array<{ link?: string; title?: string; snippet?: string }> }>(url);
-            return (data.items ?? [])
-              .map((item) => hit('google', item.link, item.title, item.snippet ?? ''))
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'bing': {
-            const url = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=10&mkt=ru-RU`;
-            const data = await fetchJson<{ webPages?: { value?: Array<{ url?: string; name?: string; snippet?: string }> } }>(
-              url,
-              { 'Ocp-Apim-Subscription-Key': keys.bingKey ?? '' },
-            );
-            return (data.webPages?.value ?? [])
-              .map((item) => hit('bing', item.url, item.name, item.snippet ?? ''))
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'crossref': {
-            const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&filter=type:book&rows=10&select=DOI,title,author,publisher,issued,URL,ISBN`;
-            const data = await fetchJson<{ message?: { items?: Array<Record<string, unknown>> } }>(
-              url,
-              { 'User-Agent': 'PolkaBooks/1.4 (mailto:polka@example.com)' },
-            );
-            return (data.message?.items ?? [])
-              .map((item) => {
-                const authors = ((item.author as Array<{ given?: string; family?: string }>) ?? [])
-                  .map((author) => [author.given, author.family].filter(Boolean).join(' '))
-                  .filter(Boolean);
-                const year = ((item.issued as { 'date-parts'?: number[][] })?.['date-parts']?.[0] ?? [])[0];
-                const title = Array.isArray(item.title) ? String(item.title[0]) : String(item.title ?? '');
-                return hit('crossref', String(item.URL ?? ''), title, [authors.join(', '), item.publisher, year].filter(Boolean).join(' · '), {
-                  kind: 'metadata',
-                });
-              })
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'openalex': {
-            const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&filter=type:book&per-page=10&select=id,title,publication_year,doi,primary_location`;
-            const data = await fetchJson<{ results?: Array<Record<string, unknown>> }>(url);
-            return (data.results ?? [])
-              .map((item) => {
-                const doi = typeof item.doi === 'string' ? item.doi : undefined;
-                const source = (item.primary_location as { source?: { display_name?: string } })?.source?.display_name;
-                return hit(
-                  'openalex',
-                  doi ?? (typeof item.id === 'string' ? item.id : undefined),
-                  typeof item.title === 'string' ? item.title : '',
-                  [source, item.publication_year].filter(Boolean).join(' · '),
-                  { kind: 'metadata' },
-                );
-              })
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'openlibrary': {
-            const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10&fields=key,title,author_name,first_publish_year,cover_i,ia,ebook_access`;
-            const data = await fetchJson<{ docs?: Array<Record<string, unknown>> }>(url);
-            return (data.docs ?? [])
-              .map((item) => {
-                const ia = Array.isArray(item.ia) ? String(item.ia[0]) : undefined;
-                const pageUrl = ia ? `https://archive.org/details/${encodeURIComponent(ia)}` : `https://openlibrary.org${String(item.key ?? '')}`;
-                const cover = item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg` : undefined;
-                return hit(
-                  'openlibrary',
-                  pageUrl,
-                  typeof item.title === 'string' ? item.title : '',
-                  [
-                    (item.author_name as string[] | undefined)?.slice(0, 2).join(', '),
-                    item.first_publish_year,
-                    item.ebook_access === 'public' ? 'открытый доступ' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · '),
-                  { coverUrl: cover, kind: 'library' },
-                );
-              })
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'gutenberg': {
-            const params = new URLSearchParams({
-              q: `collection:gutenberg AND mediatype:texts AND (${query})`,
-              rows: '10',
-              page: '1',
-              output: 'json',
-            });
-            params.append('fl[]', 'identifier');
-            params.append('fl[]', 'title');
-            params.append('fl[]', 'creator');
-            params.append('fl[]', 'year');
-            const data = await fetchJson<{ response?: { docs?: Array<Record<string, unknown>> } }>(
-              `https://archive.org/advancedsearch.php?${params.toString()}`,
-            );
-            return (data.response?.docs ?? [])
-              .map((item) =>
-                hit(
-                  'gutenberg',
-                  `https://archive.org/details/${encodeURIComponent(String(item.identifier ?? ''))}`,
-                  typeof item.title === 'string' ? item.title : String(item.identifier ?? ''),
-                  [item.creator, item.year].filter(Boolean).join(' · '),
-                  { kind: 'library' },
-                ),
-              )
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'librivox': {
-            // LibriVox каталог — официальный API без ключа, CORS разрешён.
-            const url = `https://librivox.org/api/feed/audiobooks?title=${encodeURIComponent(query)}&format=json&limit=10`;
-            const data = await fetchJson<{ books?: Array<Record<string, unknown>> }>(url);
-            const books = data.books ?? [];
-            // Если по названию пусто — пробуем по автору.
-            const list = books.length > 0 ? books : await fetchJson<{ books?: Array<Record<string, unknown>> }>(
-              `https://librivox.org/api/feed/audiobooks?author=${encodeURIComponent(query)}&format=json&limit=10`,
-            ).then((d) => d.books ?? []).catch(() => []);
-            return list
-              .map((item) => {
-                const authors = Array.isArray(item.authors)
-                  ? (item.authors as Array<{ first_name?: string; last_name?: string }>)
-                      .map((a) => [a.first_name, a.last_name].filter(Boolean).join(' '))
-                      .join(', ')
-                  : '';
-                return hit(
-                  'librivox',
-                  typeof item.url_librivox === 'string' ? item.url_librivox
-                    : `https://librivox.org/${encodeURIComponent(String(item.id ?? ''))}`,
-                  typeof item.title === 'string' ? item.title : '',
-                  [authors, item.language, item.num_sections ? `${item.num_sections} глав` : ''].filter(Boolean).join(' · '),
-                  { kind: 'library' },
-                );
-              })
-              .filter((item): item is SearchHit => Boolean(item));
-          }
-          case 'yandex': {
-            // Яндекс XML требует авторизацию — работает с пользовательским ключом.
-            const params = new URLSearchParams({
-              user: keys.yandexXmlUser ?? '',
-              key: keys.yandexXmlKey ?? '',
-              query,
-              lr: keys.yandexXmlLr ?? '213',
-              sortby: 'rlv',
-              filter: 'none',
-              maxpassages: '2',
-              groupby: 'attr=d.mode=deep.groups-on-page=10.docs-in-group=1',
-              page: '0',
-            });
-            // Яндекс XML не имеет CORS — проксируем через локальный /api/page
-            const proxyUrl = `${localBase()}/api/page?url=${encodeURIComponent(`https://yandex.ru/search/xml?${params.toString()}`)}`;
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), TIMEOUT);
-            let xml = '';
-            try {
-              const response = await fetch(proxyUrl, { signal: controller.signal, headers: { Accept: 'text/xml, text/html, */*' } });
-              if (response.ok) xml = await response.text();
-            } finally {
-              clearTimeout(timer);
-            }
-            if (!xml) return [];
-            const results: SearchHit[] = [];
-            const docRe = /<doc>([\s\S]*?)<\/doc>/g;
-            let m: RegExpExecArray | null;
-            while ((m = docRe.exec(xml)) !== null) {
-              const block = m[1];
-              const url = /<url>([\s\S]*?)<\/url>/.exec(block)?.[1] ?? '';
-              const title = /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] ?? '';
-              const passages = [...block.matchAll(/<passage>([\s\S]*?)<\/passage>/g)].map((p) => p[1]).join(' ');
-              const r = hit('yandex', url, title, passages.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
-              if (r) results.push(r);
-            }
-            return results.slice(0, limit);
-          }
-          default:
-            return [];
-        }
-      } catch {
-        return [];
-      }
-    }),
-  );
+  const results: SearchHit[][] = [];
 
+  // 1. Google CSE
+  if (keys.googleCseKey && keys.googleCseCx) {
+    try {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(keys.googleCseKey)}&cx=${encodeURIComponent(keys.googleCseCx)}&q=${encodeURIComponent(query)}&num=10&hl=ru`;
+      const data = await fetchJson<{ items?: Array<{ link?: string; title?: string; snippet?: string }> }>(url);
+      results.push(
+        (data.items ?? [])
+          .map((item) => hit('google', item.link, item.title, item.snippet ?? ''))
+          .filter((item): item is SearchHit => Boolean(item)),
+      );
+    } catch { /* ignore */ }
+  }
+
+  // 2. Bing
+  if (keys.bingKey) {
+    try {
+      const url = `https://api.bing.microsoft.com/v7.0/search?q=${encodeURIComponent(query)}&count=10&mkt=ru-RU`;
+      const data = await fetchJson<{ webPages?: { value?: Array<{ url?: string; name?: string; snippet?: string }> } }>(
+        url,
+        { 'Ocp-Apim-Subscription-Key': keys.bingKey },
+      );
+      results.push(
+        (data.webPages?.value ?? [])
+          .map((item) => hit('bing', item.url, item.name, item.snippet ?? ''))
+          .filter((item): item is SearchHit => Boolean(item)),
+      );
+    } catch { /* ignore */ }
+  }
+
+  // 3. Яндекс XML (через прокси, так как CORS может не работать)
+  if (keys.yandexXmlUser && keys.yandexXmlKey) {
+    try {
+      const params = new URLSearchParams({
+        user: keys.yandexXmlUser,
+        key: keys.yandexXmlKey,
+        query,
+        lr: keys.yandexXmlLr ?? '213',
+        sortby: 'rlv',
+        filter: 'none',
+        maxpassages: '2',
+        groupby: 'attr=d.mode=deep.groups-on-page=10.docs-in-group=1',
+        page: '0',
+      });
+      const proxyUrl = `${localBase()}/api/page?url=${encodeURIComponent(`https://yandex.ru/search/xml?${params.toString()}`)}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT);
+      let xml = '';
+      try {
+        const response = await fetch(proxyUrl, { signal: controller.signal, headers: { Accept: 'text/xml, text/html, */*' } });
+        if (response.ok) xml = await response.text();
+      } finally {
+        clearTimeout(timer);
+      }
+      if (xml) {
+        const yandexResults: SearchHit[] = [];
+        const docRe = /<doc>([\s\S]*?)<\/doc>/g;
+        let m: RegExpExecArray | null;
+        while ((m = docRe.exec(xml)) !== null) {
+          const block = m[1];
+          const url = /<url>([\s\S]*?)<\/url>/.exec(block)?.[1] ?? '';
+          const title = /<title>([\s\S]*?)<\/title>/.exec(block)?.[1] ?? '';
+          const passages = [...block.matchAll(/<passage>([\s\S]*?)<\/passage>/g)].map((p) => p[1]).join(' ');
+          const r = hit('yandex', url, title, passages.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+          if (r) yandexResults.push(r);
+        }
+        results.push(yandexResults.slice(0, limit));
+      }
+    } catch { /* ignore */ }
+  }
+
+  // SearXNG добавляется уровнем выше в searchOnDevice(). Не вызываем его здесь,
+  // иначе получится рекурсивный цикл searchOnDevice → searchDirect → searchOnDevice.
+
+  // Дедупликация и объединение
   const seen = new Set<string>();
   const merged: SearchHit[] = [];
   for (const item of results.flat()) {
-    const key = item.url.replace(/[#?].*$/, '');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(item);
+    const key = item.url.replace(/[#?].*$/, '').replace(/^https?:\/\/www\./, 'https://');
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(item);
+    }
   }
-  const rank = (item: SearchHit) => (item.kind === 'library' ? 0 : item.kind === 'metadata' ? 2 : 1);
-  return merged.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  return merged.slice(0, limit);
 }
 
-/** Загружает HTML страницы через локальный прокси приложения. */
-export async function fetchPageHtml(url: string, timeout = 15_000): Promise<string | null> {
-  const base = localBase();
-  if (!base) return null;
+/** Экспорт для UI — список используемых SearXNG инстансов. */
+export type { SearxInstance } from './searx';
+export { searchOnDevice } from './searx';
+
+// --- Функции для engine.ts (анализ страниц через локальный прокси) ---
+
+export async function analyzePageLocal(url: string): Promise<PageAnalysis | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
+  const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    const response = await fetch(`${base}/api/page?url=${encodeURIComponent(url)}`, {
+    const response = await fetch(`${localBase()}/api/page?url=${encodeURIComponent(url)}`, {
       signal: controller.signal,
       headers: { Accept: 'text/html' },
     });
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type') ?? '';
     if (!/html/i.test(contentType)) return null;
-    return (await response.text()).slice(0, 3 * 1024 * 1024);
+    const html = (await response.text()).slice(0, 3 * 1024 * 1024);
+    return analyzeHtml(html, url);
   } catch {
     return null;
   } finally {
@@ -299,29 +204,11 @@ export async function fetchPageHtml(url: string, timeout = 15_000): Promise<stri
   }
 }
 
-/** Анализ страницы на устройстве. */
-export async function analyzePageLocal(url: string): Promise<PageAnalysis | null> {
-  const html = await fetchPageHtml(url);
-  if (!html) return null;
-  try {
-    return analyzeHtml(html, url);
-  } catch {
-    return null;
-  }
-}
-
-/** Есть ли локальный прокси страниц (APK или свой сервер). */
-let pageProxyReady: boolean | null = null;
-
 export async function hasPageProxy(): Promise<boolean> {
-  if (pageProxyReady !== null) return pageProxyReady;
-  const base = localBase();
-  if (!base) return false;
   try {
-    const response = await fetch(`${base}/api/page?url=${encodeURIComponent('https://example.com')}`, {
+    const response = await fetch(`${localBase()}/api/page?url=${encodeURIComponent('https://example.com')}`, {
       signal: AbortSignal.timeout(6000),
     });
-    pageProxyReady = response.ok;
     return response.ok;
   } catch {
     return false;

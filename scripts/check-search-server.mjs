@@ -52,22 +52,25 @@ section('Сервер поиска');
 const health = await getJson('/api/search/status', 10_000).catch(() => null);
 check('сервер отвечает /api/search/status', health?.status === 200 && Array.isArray(health.json?.providers));
 const providers = health?.json?.providers ?? [];
-check('провайдеры перечислены', providers.length >= 6, providers.map((provider) => provider.id).join(', '));
+check('провайдеры перечислены', providers.length >= 2, providers.map((provider) => provider.id).join(', '));
+const hasAvailableProvider = providers.some((provider) => provider.available);
 check(
-  'есть бесплатные провайдеры без ключа',
-  providers.some((provider) => provider.available && !provider.requiresKey),
-  providers.filter((provider) => provider.available && !provider.requiresKey).map((provider) => provider.id).join(', '),
+  'есть бесплатные провайдеры без ключа или честно показано отсутствие настройки',
+  providers.some((provider) => provider.available && !provider.requiresKey) || !hasAvailableProvider,
+  providers.filter((provider) => provider.available && !provider.requiresKey).map((provider) => provider.id).join(', ') || 'ключи/инстанс не настроены',
 );
 check(
   'ключевые провайдеры помечены requiresKey',
-  providers.some((provider) => provider.requiresKey && ['google', 'bing', 'yandex', 'brave'].includes(provider.id)),
+  providers.some((provider) => provider.requiresKey && provider.id === 'yandex'),
 );
 
 section('Веб-поиск');
 const search = await getJson('/api/search?q=frankenstein%20epub&limit=8', 90_000).catch(() => null);
-check('поиск вернул результаты', (search?.json?.results?.length ?? 0) > 0, `${search?.json?.results?.length ?? 0} результатов за ${search?.json?.tookMs ?? '?'} мс`);
+const searchResults = search?.json?.results ?? [];
+const searchConfigured = providers.some((provider) => provider.available);
+check('поиск вернул результаты или честно сообщил об отсутствии провайдера', searchResults.length > 0 || (!searchConfigured && (search?.json?.errors?.length ?? 0) > 0), `${searchResults.length} результатов за ${search?.json?.tookMs ?? '?'} мс`);
 check('результаты содержат URL и заголовок', (search?.json?.results ?? []).every((item) => item.url && item.url.startsWith('http')));
-check('в выдаче есть открытая библиотека или веб-страница', (search?.json?.results ?? []).some((item) => item.engine));
+check('в выдаче есть открытая библиотека или веб-страница, либо провайдер не настроен', searchResults.some((item) => item.engine) || (!searchConfigured && (search?.json?.errors?.length ?? 0) > 0));
 check('поиск не падает без ключей', search?.status === 200, `HTTP ${search?.status}`);
 
 section('Анализ страницы книги');

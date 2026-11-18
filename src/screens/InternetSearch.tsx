@@ -420,11 +420,11 @@ export function InternetSearchScreen() {
         {preferences.mode === 'device' && !result && (
           <div className="discovery-setup discovery-setup--direct">
             <p>
-              <strong>Без компьютера и обязательного сервера.</strong> Используем открытые поисковые API и публичные SearXNG-узлы из официального реестра. Узлы проверяются, кэшируются и переключаются автоматически.
+              <strong>Без компьютера и обязательного сервера.</strong> Резервный поиск через SearXNG — публичные узлы из официального реестра. Узлы проверяются, кэшируются и переключаются автоматически.
               {activeSearx.length > 0 && <> Сейчас доступны SearXNG: {activeSearx.map((item) => new URL(item.url).hostname).join(', ')}.</>}
             </p>
             <p className="discovery-setup__hint">
-              Бесплатные публичные узлы могут временно ограничивать запросы. Если все недоступны, продолжают работать Crossref, OpenAlex и книжные API. Безопасный парсинг выдачи Google/Яндекса не используется.
+              Если SearXNG недоступен, поиск временно не работает. Настройте сервер с Яндекс API для основного поиска.
             </p>
           </div>
         )}
@@ -456,8 +456,8 @@ export function InternetSearchScreen() {
 
         {providersOnline && !webApiAvailable && (
           <p className="discovery-hint">
-            Сейчас работают открытые провайдеры (Marginalia, Crossref, OpenAlex, открытые библиотеки). Чтобы включить
-            Google, Bing, Brave или Яндекс — задайте ключи на сервере поиска.
+            Основной поиск — Яндекс Search API (ключ на сервере). Резерв — SearXNG.
+            Чтобы включить Google или Bing — добавьте свои ключи в настройках.
           </p>
         )}
       </header>
@@ -700,8 +700,8 @@ export function InternetSearchScreen() {
           </button>
 
           <p className="pref-card__hint">
-            Без сервера работают SearXNG (публичные узлы из официального реестра), Crossref, OpenAlex, Open Library и
-            Gutenberg. Google и Bing включаются своими ключами — они сохраняются в памяти приложения и не попадают в код.
+            Основной поиск — Яндекс Search API (ключ YANDEX_API_KEY на сервере). Резерв — SearXNG (публичные узлы).
+            Опционально: Google CSE, Bing — свои ключи на устройстве.
           </p>
 
           <label className="web-field">

@@ -185,22 +185,13 @@ export async function internetSearch(query: string, options: SearchOptions = {})
   } else {
     const keys = options.keys ?? {};
     const localProviders = directProviders(keys);
-    providers = [
-      ...localProviders.map((provider) => ({
-        id: provider.id,
-        name: provider.name,
-        requiresKey: provider.requiresKey,
-        note: provider.note,
-        available: provider.available,
-      })),
-      {
-        id: 'searxng',
-        name: 'SearXNG (официальный список)',
-        requiresKey: false,
-        note: 'Публичные экземпляры берутся из searx.space и проверяются на JSON/здоровье',
-        available: true,
-      },
-    ];
+    providers = localProviders.map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      requiresKey: provider.requiresKey,
+      note: provider.note,
+      available: provider.available,
+    }));
     unavailable = providers.filter((provider) => !provider.available);
     const deviceAnswer = await searchOnDevice(cleanQuery, keys, { signal: options.signal, limit: 12 });
     searxInstances = deviceAnswer.instances;
